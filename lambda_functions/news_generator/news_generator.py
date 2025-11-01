@@ -78,16 +78,16 @@ def lambda_handler(event, context):
     date_str = datetime.utcnow().strftime('%Y-%m-%d')
     time_str = datetime.utcnow().strftime('%H-%M-%S')
 
-    # Get historical candle data (what actually happened in past hour)
+    # Get collected price history (what actually happened in past hour)
     try:
         response = s3_client.get_object(
             Bucket=market_data_bucket,
-            Key='raw_data/latest_candles_1min.json'
+            Key='collected_prices/rolling_history_60min.json'
         )
-        candle_data = json.loads(response['Body'].read().decode('utf-8'))
-        print(f"Loaded candle data for {len(candle_data['candles'])} assets")
+        history_data = json.loads(response['Body'].read().decode('utf-8'))
+        print(f"Loaded price history for {len(history_data['assets'])} assets")
     except Exception as e:
-        print(f"Error loading candle data: {str(e)}")
+        print(f"Error loading price history: {str(e)}")
         raise
 
     # Get simulated future data (predictions for next hour)
@@ -104,12 +104,20 @@ def lambda_handler(event, context):
 
     # Analyze movements: past hour vs future hour predictions
     movements = []
-    for symbol in candle_data['candles'].keys():
-        candle_info = candle_data['candles'].get(symbol)
+    for symbol in history_data['assets'].keys():
+        asset_history = history_data['assets'].get(symbol)
         simulated_info = simulated_data['assets'].get(symbol)
 
-        if candle_info and simulated_info:
-            past_change_pct = candle_info.get('hour_change_percent', 0)
+        if asset_history and asset_history.get('data_points') and simulated_info:
+            # Calculate past hour change from collected data
+            data_points = asset_history['data_points']
+            if len(data_points) >= 2:
+                first_price = data_points[0]['price']
+                last_price = data_points[-1]['price']
+                past_change_pct = ((last_price - first_price) / first_price) * 100
+            else:
+                past_change_pct = 0
+
             future_change_pct = simulated_info.get('hour_change_percent', 0)
             current_price = simulated_info.get('start_price', 0)
 

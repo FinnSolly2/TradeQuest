@@ -75,7 +75,7 @@ def generate_minute_prices(start_price, mean_return, volatility, trend, num_minu
 def lambda_handler(event, context):
     """
     Generates 60 simulated prices (1 per minute) for the NEXT hour
-    based on statistical distribution from the PAST hour's candle data.
+    based on statistical distribution from the PAST hour's collected price data.
     """
     market_data_bucket = os.environ['MARKET_DATA_BUCKET']
 
@@ -83,16 +83,20 @@ def lambda_handler(event, context):
     date_str = datetime.utcnow().strftime('%Y-%m-%d')
     time_str = datetime.utcnow().strftime('%H-%M-%S')
 
-    # Get the latest candle data (past hour)
+    # Get the collected price history (past hour)
     try:
         response = s3_client.get_object(
             Bucket=market_data_bucket,
-            Key='raw_data/latest_candles_1min.json'
+            Key='collected_prices/rolling_history_60min.json'
         )
-        candle_data = json.loads(response['Body'].read().decode('utf-8'))
-        print(f"Loaded candle data for {len(candle_data['candles'])} assets")
+        history_data = json.loads(response['Body'].read().decode('utf-8'))
+        print(f"Loaded price history for {len(history_data['assets'])} assets")
+
+        # Check if we have enough data
+        if not history_data.get('stats', {}).get('ready_for_simulation', False):
+            print(f"⚠️  Warning: Only {history_data['stats']['assets_with_full_hour']} assets have full 60min data")
     except Exception as e:
-        print(f"Error loading candle data: {str(e)}")
+        print(f"Error loading price history: {str(e)}")
         raise
 
     # Start time for the simulated hour (current time, rounded to the minute)
@@ -108,15 +112,24 @@ def lambda_handler(event, context):
         'assets': {}
     }
 
-    for symbol, candle_info in candle_data['candles'].items():
-        if candle_info is None or not candle_info.get('data'):
-            print(f"Skipping {symbol} - no candle data available")
+    for symbol, asset_history in history_data['assets'].items():
+        if asset_history is None or not asset_history.get('data_points'):
+            print(f"Skipping {symbol} - no price data available")
             simulated_data['assets'][symbol] = None
             continue
 
         try:
-            candles = candle_info['data']
-            last_price = candle_info['last_price']
+            data_points = asset_history['data_points']
+
+            # Convert collected prices to candle format for calculate_statistics
+            candles = []
+            for point in data_points:
+                candles.append({
+                    'close': point['price'],
+                    'timestamp': point['timestamp']
+                })
+
+            last_price = data_points[-1]['price']  # Most recent price
 
             # Calculate statistics from historical data
             mean_return, volatility, trend = calculate_statistics(candles)

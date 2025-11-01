@@ -308,7 +308,27 @@ resource "aws_iam_role_policy" "eventbridge_policy" {
 # LAMBDA FUNCTIONS
 # ============================================================================
 
-# Finnhub data fetcher Lambda
+# Price collector Lambda - runs every minute to collect real prices
+resource "aws_lambda_function" "price_collector" {
+  filename         = "${path.module}/../lambda_packages/price_collector.zip"
+  function_name    = "${var.project_name}-price-collector-${var.environment}"
+  role            = aws_iam_role.lambda_execution_role.arn
+  handler         = "price_collector.lambda_handler"
+  source_code_hash = fileexists("${path.module}/../lambda_packages/price_collector.zip") ? filebase64sha256("${path.module}/../lambda_packages/price_collector.zip") : null
+  runtime         = "python3.11"
+  timeout         = 120
+  memory_size     = 256
+
+  environment {
+    variables = {
+      FINNHUB_API_KEY    = var.finnhub_api_key
+      MARKET_DATA_BUCKET = aws_s3_bucket.market_data.id
+      ASSETS_TO_TRACK    = jsonencode(var.assets_to_track)
+    }
+  }
+}
+
+# Finnhub data fetcher Lambda (DEPRECATED - will be removed)
 resource "aws_lambda_function" "finnhub_fetcher" {
   filename         = "${path.module}/../lambda_packages/finnhub_fetcher.zip"
   function_name    = "${var.project_name}-finnhub-fetcher-${var.environment}"
@@ -487,24 +507,9 @@ resource "aws_sfn_state_machine" "simulation_pipeline" {
   role_arn = aws_iam_role.step_functions_role.arn
 
   definition = jsonencode({
-    Comment = "Trade Quest simulation pipeline"
-    StartAt = "FetchMarketData"
+    Comment = "Trade Quest simulation pipeline (uses collected price data)"
+    StartAt = "SimulatePrices"
     States = {
-      FetchMarketData = {
-        Type     = "Task"
-        Resource = aws_lambda_function.finnhub_fetcher.arn
-        Next     = "SimulatePrices"
-        Retry = [{
-          ErrorEquals     = ["States.TaskFailed"]
-          IntervalSeconds = 2
-          MaxAttempts     = 3
-          BackoffRate     = 2.0
-        }]
-        Catch = [{
-          ErrorEquals = ["States.ALL"]
-          Next        = "HandleError"
-        }]
-      }
       SimulatePrices = {
         Type     = "Task"
         Resource = aws_lambda_function.price_simulator.arn
@@ -547,6 +552,26 @@ resource "aws_sfn_state_machine" "simulation_pipeline" {
 # ============================================================================
 # EVENTBRIDGE RULES
 # ============================================================================
+
+# Minute-by-minute rule for price collection
+resource "aws_cloudwatch_event_rule" "price_collection" {
+  name                = "${var.project_name}-price-collection-${var.environment}"
+  description         = "Collect prices from Finnhub every minute"
+  schedule_expression = "rate(1 minute)"
+}
+
+resource "aws_cloudwatch_event_target" "price_collection_target" {
+  rule     = aws_cloudwatch_event_rule.price_collection.name
+  arn      = aws_lambda_function.price_collector.arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_price_collection" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.price_collector.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.price_collection.arn
+}
 
 # Hourly rule for data fetching and simulation
 resource "aws_cloudwatch_event_rule" "hourly_simulation" {

@@ -41,7 +41,7 @@ jobs:
           mkdir -p lambda_packages
 
           # List of Lambda functions
-          FUNCTIONS="finnhub_fetcher price_simulator news_generator api_get_prices api_get_news api_execute_trade api_get_portfolio api_get_leaderboard session_checker"
+          FUNCTIONS="price_collector finnhub_fetcher price_simulator news_generator api_get_prices api_get_news api_execute_trade api_get_portfolio api_get_leaderboard session_checker"
 
           for func in $FUNCTIONS; do
             echo "📦 Packaging $func..."
@@ -136,7 +136,7 @@ jobs:
           echo "${{ steps.terraform_outputs.outputs.frontend_url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Lambda Functions Deployed" >> $GITHUB_STEP_SUMMARY
-          echo "✅ 9 Lambda functions updated" >> $GITHUB_STEP_SUMMARY
+          echo "✅ 10 Lambda functions updated (including new price_collector)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### ⏰ Deployment Time" >> $GITHUB_STEP_SUMMARY
           echo "$(date -u)" >> $GITHUB_STEP_SUMMARY
