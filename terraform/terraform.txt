@@ -1,0 +1,21 @@
+aws_region   = "eu-west-1"
+project_name = "trade-quest"
+environment  = "dev"
+
+finnhub_api_key = "d42d97hr01qorleqqsp0d42d97hr01qorleqqspg"
+
+# Hugging Face API key (get from: https://huggingface.co/settings/tokens)
+huggingface_api_key = "demo"
+
+assets_to_track = [
+  "AAPL",
+  "GOOGL",
+  "MSFT",
+  "TSLA",
+  "AMZN",
+  "NVDA",
+  "META",
+  "BTC-USD",
+  "ETH-USD",
+  "SPY"
+]

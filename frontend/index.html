@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Quest - Trading Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Trade Quest</h1>
+            <p class="subtitle">Cloud-Native Trading Simulator</p>
+        </header>
+
+        <!-- User Info Section -->
+        <section class="user-info">
+            <div class="info-card">
+                <label for="user-id">User ID:</label>
+                <input type="text" id="user-id" placeholder="Enter your user ID" value="user123">
+                <button onclick="loadUserData()">Load Account</button>
+            </div>
+            <div class="balance-display">
+                <div class="balance-item">
+                    <span class="label">Cash Balance:</span>
+                    <span id="balance" class="value">$0.00</span>
+                </div>
+                <div class="balance-item">
+                    <span class="label">Portfolio Value:</span>
+                    <span id="portfolio-value" class="value">$0.00</span>
+                </div>
+                <div class="balance-item">
+                    <span class="label">Total Value:</span>
+                    <span id="total-value" class="value">$0.00</span>
+                </div>
+                <div class="balance-item">
+                    <span class="label">P/L:</span>
+                    <span id="profit-loss" class="value">$0.00</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- Market Prices Section -->
+            <section class="prices-section">
+                <h2>Market Prices</h2>
+                <div id="prices-container" class="prices-grid">
+                    <p>Loading prices...</p>
+                </div>
+                <button onclick="refreshPrices()" class="refresh-btn">Refresh Prices</button>
+            </section>
+
+            <!-- Portfolio Section -->
+            <section class="portfolio-section">
+                <h2>My Portfolio</h2>
+                <div id="portfolio-container">
+                    <p>No positions yet</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- News Section -->
+        <section class="news-section">
+            <h2>Market News</h2>
+            <div id="news-container">
+                <p>Loading news...</p>
+            </div>
+            <button onclick="refreshNews()" class="refresh-btn">Refresh News</button>
+        </section>
+
+        <!-- Leaderboard Section -->
+        <section class="leaderboard-section">
+            <h2>Leaderboard</h2>
+            <div id="leaderboard-container">
+                <p>Loading leaderboard...</p>
+            </div>
+            <button onclick="refreshLeaderboard()" class="refresh-btn">Refresh Leaderboard</button>
+        </section>
+    </div>
+
+    <!-- Trade Modal -->
+    <div id="trade-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTradeModal()">&times;</span>
+            <h2>Execute Trade</h2>
+            <div class="trade-form">
+                <p><strong>Asset:</strong> <span id="trade-symbol"></span></p>
+                <p><strong>Current Price:</strong> $<span id="trade-price"></span></p>
+                <p><strong>Available Cash:</strong> $<span id="trade-available-cash"></span></p>
+                <p><strong>Holdings:</strong> <span id="trade-holdings"></span> shares</p>
+
+                <label for="trade-quantity">Quantity:</label>
+                <input type="number" id="trade-quantity" min="1" value="1">
+
+                <div class="trade-actions">
+                    <button onclick="executeTrade('buy')" class="buy-btn">BUY</button>
+                    <button onclick="executeTrade('sell')" class="sell-btn">SELL</button>
+                </div>
+
+                <p id="trade-message" class="trade-message"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

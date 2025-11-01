@@ -1,0 +1,142 @@
+name: Deploy Trade Quest
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual triggering
+
+env:
+  AWS_REGION: eu-west-1
+  TERRAFORM_VERSION: 1.6.0
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Package Lambda Functions
+        run: |
+          mkdir -p lambda_packages
+
+          # List of Lambda functions
+          FUNCTIONS="finnhub_fetcher price_simulator news_generator api_get_prices api_get_news api_execute_trade api_get_portfolio api_get_leaderboard session_checker"
+
+          for func in $FUNCTIONS; do
+            echo "📦 Packaging $func..."
+            mkdir -p lambda_packages/${func}_package
+
+            # Install dependencies if requirements.txt exists
+            if [ -f "lambda_functions/$func/requirements.txt" ]; then
+              echo "  Installing dependencies..."
+              pip install -r lambda_functions/$func/requirements.txt \
+                -t lambda_packages/${func}_package \
+                --quiet --no-user
+            fi
+
+            # Copy Lambda code
+            cp lambda_functions/$func/*.py lambda_packages/${func}_package/
+
+            # Create ZIP
+            cd lambda_packages/${func}_package
+            zip -r ../$func.zip . -q
+            cd ../..
+
+            # Cleanup
+            rm -rf lambda_packages/${func}_package
+
+            echo "  ✅ $func.zip created"
+          done
+
+          echo ""
+          echo "📊 Package sizes:"
+          ls -lh lambda_packages/*.zip
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan -out=tfplan
+        env:
+          TF_VAR_finnhub_api_key: ${{ secrets.FINNHUB_API_KEY }}
+          TF_VAR_huggingface_api_key: ${{ secrets.HUGGINGFACE_API_KEY }}
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+
+      - name: Get Terraform Outputs
+        id: terraform_outputs
+        working-directory: ./terraform
+        run: |
+          echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
+          echo "cloudfront_distribution_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+          echo "frontend_url=$(terraform output -raw frontend_url)" >> $GITHUB_OUTPUT
+
+      - name: Upload Frontend to S3
+        run: |
+          echo "📤 Uploading frontend files to S3..."
+          aws s3 sync frontend/ s3://${{ steps.terraform_outputs.outputs.frontend_bucket }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "*.html" \
+            --quiet
+
+          # Upload HTML files with different cache settings
+          aws s3 sync frontend/ s3://${{ steps.terraform_outputs.outputs.frontend_bucket }}/ \
+            --exclude "*" \
+            --include "*.html" \
+            --cache-control "public, max-age=0, must-revalidate" \
+            --quiet
+
+          echo "✅ Frontend uploaded"
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          echo "🔄 Invalidating CloudFront cache..."
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.terraform_outputs.outputs.cloudfront_distribution_id }} \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text
+          echo "✅ Cache invalidation requested"
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🎉 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 Frontend URL" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.terraform_outputs.outputs.frontend_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Lambda Functions Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ 9 Lambda functions updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⏰ Deployment Time" >> $GITHUB_STEP_SUMMARY
+          echo "$(date -u)" >> $GITHUB_STEP_SUMMARY
