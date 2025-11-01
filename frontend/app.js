@@ -14,8 +14,8 @@ window.onload = function() {
     refreshNews();
     refreshLeaderboard();
 
-    // Auto-refresh every 30 seconds
-    setInterval(refreshPrices, 30000);
+    // Auto-refresh every minute (prices change minute-by-minute)
+    setInterval(refreshPrices, 60000);
     setInterval(refreshNews, 60000);
 };
 
@@ -90,10 +90,14 @@ function displayPrices(prices) {
     let html = '';
 
     for (const [symbol, data] of Object.entries(prices)) {
-        if (!data) continue;
+        if (!data || !data.current) continue;
 
-        const changeClass = data.change_percent >= 0 ? 'positive' : 'negative';
-        const changeSign = data.change_percent >= 0 ? '+' : '';
+        // Calculate change from hour start to current price
+        const change = data.current - data.hour_start;
+        const changePercent = (change / data.hour_start) * 100;
+
+        const changeClass = changePercent >= 0 ? 'positive' : 'negative';
+        const changeSign = changePercent >= 0 ? '+' : '';
 
         html += `
             <div class="price-card ${changeClass}">
@@ -101,7 +105,10 @@ function displayPrices(prices) {
                 <div class="price-info">
                     <div class="price-current">$${data.current.toFixed(2)}</div>
                     <div class="price-change ${changeClass}">
-                        ${changeSign}${data.change.toFixed(2)} (${changeSign}${data.change_percent.toFixed(2)}%)
+                        ${changeSign}${change.toFixed(2)} (${changeSign}${changePercent.toFixed(2)}%)
+                    </div>
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">
+                        Hour: ${data.hour_projected_change_percent >= 0 ? '📈' : '📉'} ${data.hour_projected_change_percent >= 0 ? '+' : ''}${data.hour_projected_change_percent.toFixed(1)}% projected
                     </div>
                 </div>
                 <div class="price-actions">

@@ -3,15 +3,79 @@ import os
 import boto3
 import random
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 s3_client = boto3.client('s3')
 
+def calculate_statistics(candles):
+    """
+    Calculate statistical properties from historical candle data.
+    Returns mean return, volatility, and trend.
+    """
+    if len(candles) < 2:
+        return 0, 0.02, 0
+
+    # Calculate returns between consecutive candles
+    returns = []
+    for i in range(1, len(candles)):
+        ret = (candles[i]['close'] - candles[i-1]['close']) / candles[i-1]['close']
+        returns.append(ret)
+
+    # Mean return per minute
+    mean_return = sum(returns) / len(returns) if returns else 0
+
+    # Volatility (standard deviation of returns)
+    if len(returns) > 1:
+        variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
+        volatility = math.sqrt(variance)
+    else:
+        volatility = 0.02
+
+    # Trend: difference between last and first close
+    trend = (candles[-1]['close'] - candles[0]['close']) / candles[0]['close']
+
+    return mean_return, volatility, trend
+
+
+def generate_minute_prices(start_price, mean_return, volatility, trend, num_minutes=60):
+    """
+    Generate simulated prices for the next hour using GBM with historical statistics.
+    Returns list of 60 prices (one per minute).
+    """
+    prices = []
+    current_price = start_price
+
+    # Adjust drift to include trend component
+    drift = mean_return + (trend / num_minutes)  # Distribute trend over the hour
+
+    for minute in range(num_minutes):
+        # Geometric Brownian Motion
+        # dS = μ * S * dt + σ * S * dW
+        dt = 1 / (24 * 60)  # 1 minute in terms of days
+        dW = random.gauss(0, math.sqrt(dt))
+
+        price_change = drift * current_price + volatility * current_price * dW
+        new_price = current_price + price_change
+
+        # Ensure price stays reasonable (max 5% change per minute)
+        max_change = current_price * 0.05
+        new_price = max(new_price, current_price - max_change)
+        new_price = min(new_price, current_price + max_change)
+
+        # Ensure price doesn't go negative
+        new_price = max(new_price, start_price * 0.5)
+
+        prices.append(round(new_price, 2))
+        current_price = new_price
+
+    return prices
+
+
 def lambda_handler(event, context):
     """
-    Generates simulated price movements based on real market data.
-    Uses statistical models (Geometric Brownian Motion) to create realistic price paths.
+    Generates 60 simulated prices (1 per minute) for the NEXT hour
+    based on statistical distribution from the PAST hour's candle data.
     """
     market_data_bucket = os.environ['MARKET_DATA_BUCKET']
 
@@ -19,104 +83,93 @@ def lambda_handler(event, context):
     date_str = datetime.utcnow().strftime('%Y-%m-%d')
     time_str = datetime.utcnow().strftime('%H-%M-%S')
 
-    # Get the latest real market data
+    # Get the latest candle data (past hour)
     try:
         response = s3_client.get_object(
             Bucket=market_data_bucket,
-            Key='raw_data/latest_market_data.json'
+            Key='raw_data/latest_candles_1min.json'
         )
-        real_data = json.loads(response['Body'].read().decode('utf-8'))
-        print(f"Loaded real market data with {len(real_data['prices'])} assets")
+        candle_data = json.loads(response['Body'].read().decode('utf-8'))
+        print(f"Loaded candle data for {len(candle_data['candles'])} assets")
     except Exception as e:
-        print(f"Error loading real market data: {str(e)}")
+        print(f"Error loading candle data: {str(e)}")
         raise
 
-    # Get historical simulated data to maintain continuity
-    try:
-        response = s3_client.get_object(
-            Bucket=market_data_bucket,
-            Key='simulated_data/latest_simulated_prices.json'
-        )
-        previous_simulated = json.loads(response['Body'].read().decode('utf-8'))
-        print("Loaded previous simulated data for continuity")
-    except s3_client.exceptions.NoSuchKey:
-        print("No previous simulated data found, using real prices as base")
-        previous_simulated = None
-    except Exception as e:
-        print(f"Error loading previous simulated data: {str(e)}")
-        previous_simulated = None
+    # Start time for the simulated hour (current time, rounded to the minute)
+    current_dt = datetime.utcnow()
+    start_timestamp = int(current_dt.replace(second=0, microsecond=0).timestamp())
 
     simulated_data = {
         'timestamp': timestamp,
-        'datetime': datetime.utcnow().isoformat(),
-        'prices': {}
+        'datetime': current_dt.isoformat(),
+        'start_timestamp': start_timestamp,
+        'end_timestamp': start_timestamp + (60 * 60),
+        'resolution': '1min',
+        'assets': {}
     }
 
-    for symbol, real_price_data in real_data['prices'].items():
-        if real_price_data is None:
-            print(f"Skipping {symbol} - no real data available")
-            simulated_data['prices'][symbol] = None
+    for symbol, candle_info in candle_data['candles'].items():
+        if candle_info is None or not candle_info.get('data'):
+            print(f"Skipping {symbol} - no candle data available")
+            simulated_data['assets'][symbol] = None
             continue
 
         try:
-            # Get the current real price
-            current_real_price = real_price_data['current']
+            candles = candle_info['data']
+            last_price = candle_info['last_price']
 
-            # Calculate volatility from real data (using daily change percentage as proxy)
-            real_volatility = abs(real_price_data['change_percent']) / 100 if real_price_data['change_percent'] != 0 else 0.02
+            # Calculate statistics from historical data
+            mean_return, volatility, trend = calculate_statistics(candles)
 
-            # Get previous simulated price or use current real price as starting point
-            if previous_simulated and symbol in previous_simulated['prices'] and previous_simulated['prices'][symbol]:
-                previous_price = previous_simulated['prices'][symbol]['current']
-            else:
-                previous_price = current_real_price
+            print(f"📊 {symbol}: mean_return={mean_return:.6f}, volatility={volatility:.4f}, trend={trend:+.2%}")
 
-            # Simulate price using Geometric Brownian Motion (GBM)
-            # dS = μ * S * dt + σ * S * dW
-            # where μ is drift, σ is volatility, dW is Wiener process
+            # Generate 60 simulated prices for next hour
+            random.seed(int(timestamp) + hash(symbol) % 10000)
+            simulated_prices = generate_minute_prices(
+                start_price=last_price,
+                mean_return=mean_return,
+                volatility=volatility * 2,  # Amplify for more interesting simulation
+                trend=trend
+            )
 
-            # Parameters
-            dt = 1/24  # Time step (1 hour = 1/24 of a day)
-            mu = real_price_data['change_percent'] / 100  # Drift from real market
-            sigma = real_volatility * 2  # Amplified volatility for more interesting simulation
+            # Create timestamped price data
+            minute_data = []
+            for i, price in enumerate(simulated_prices):
+                minute_timestamp = start_timestamp + (i * 60)
+                minute_data.append({
+                    'minute': i,
+                    'timestamp': minute_timestamp,
+                    'datetime': datetime.fromtimestamp(minute_timestamp).isoformat(),
+                    'price': price
+                })
 
-            # Generate random walk
-            random.seed(int(timestamp) + hash(symbol) % 10000)  # Seed for reproducibility
-            dW = random.gauss(0, math.sqrt(dt))  # Normal distribution: mean=0, std=sqrt(dt)
-
-            # Calculate new simulated price
-            price_change = mu * previous_price * dt + sigma * previous_price * dW
-            new_price = previous_price + price_change
-
-            # Ensure price doesn't go negative or change too dramatically
-            new_price = max(new_price, previous_price * 0.8)  # Max 20% drop
-            new_price = min(new_price, previous_price * 1.2)  # Max 20% gain
-
-            # Calculate metrics
-            open_price = previous_price
-            high_price = max(new_price, previous_price * (1 + abs(sigma * dW) / 2))
-            low_price = min(new_price, previous_price * (1 - abs(sigma * dW) / 2))
-
-            simulated_data['prices'][symbol] = {
-                'current': round(new_price, 2),
-                'open': round(open_price, 2),
-                'high': round(high_price, 2),
-                'low': round(low_price, 2),
-                'previous_close': round(previous_price, 2),
-                'change': round(new_price - previous_price, 2),
-                'change_percent': round(((new_price - previous_price) / previous_price * 100), 2),
-                'real_price_reference': round(current_real_price, 2),
-                'volatility': round(sigma, 4)
+            # Calculate summary statistics for the simulated hour
+            simulated_data['assets'][symbol] = {
+                'minutes': minute_data,
+                'count': len(minute_data),
+                'start_price': simulated_prices[0],
+                'end_price': simulated_prices[-1],
+                'hour_high': max(simulated_prices),
+                'hour_low': min(simulated_prices),
+                'hour_change': simulated_prices[-1] - simulated_prices[0],
+                'hour_change_percent': ((simulated_prices[-1] - simulated_prices[0]) / simulated_prices[0] * 100),
+                'based_on': {
+                    'historical_mean_return': mean_return,
+                    'historical_volatility': volatility,
+                    'historical_trend': trend,
+                    'historical_last_price': last_price
+                }
             }
 
-            print(f"✓ {symbol}: ${previous_price:.2f} → ${new_price:.2f} ({simulated_data['prices'][symbol]['change_percent']:+.2f}%)")
+            change_pct = simulated_data['assets'][symbol]['hour_change_percent']
+            print(f"✓ {symbol}: Generated 60 prices, ${simulated_prices[0]:.2f} → ${simulated_prices[-1]:.2f} ({change_pct:+.2f}%)")
 
         except Exception as e:
             print(f"Error simulating {symbol}: {str(e)}")
-            simulated_data['prices'][symbol] = None
+            simulated_data['assets'][symbol] = None
 
     # Store simulated data in S3
-    s3_key = f"simulated_data/{date_str}/{time_str}_simulated_prices.json"
+    s3_key = f"simulated_data/{date_str}/{time_str}_simulated_1min.json"
 
     try:
         s3_client.put_object(
@@ -131,7 +184,7 @@ def lambda_handler(event, context):
         raise
 
     # Update latest simulated data
-    latest_key = "simulated_data/latest_simulated_prices.json"
+    latest_key = "simulated_data/latest_simulated_1min.json"
     try:
         s3_client.put_object(
             Bucket=market_data_bucket,
@@ -148,7 +201,8 @@ def lambda_handler(event, context):
         'body': json.dumps({
             'message': 'Price simulation completed successfully',
             's3_key': s3_key,
-            'assets_simulated': len([p for p in simulated_data['prices'].values() if p is not None]),
-            'timestamp': timestamp
+            'assets_simulated': len([a for a in simulated_data['assets'].values() if a is not None]),
+            'timestamp': timestamp,
+            'simulation_period': f"{datetime.fromtimestamp(start_timestamp).strftime('%H:%M')} - {datetime.fromtimestamp(start_timestamp + 3600).strftime('%H:%M')}"
         })
     }
