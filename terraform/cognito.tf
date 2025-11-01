@@ -5,8 +5,8 @@
 resource "aws_cognito_user_pool" "trade_quest" {
   name = "${var.project_name}-users-${var.environment}"
 
-  # Allow users to sign in with email or username
-  alias_attributes = ["email", "preferred_username"]
+  # Allow users to sign in with email
+  username_attributes = ["email"]
   auto_verified_attributes = ["email"]
 
   # Password policy

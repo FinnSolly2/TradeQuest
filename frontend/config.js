@@ -5,8 +5,8 @@
 
 const AWS_CONFIG = {
     region: 'eu-west-1',
-    userPoolId: 'eu-west-1_9xwU22S9A',  // From terraform output: cognito_user_pool_id
-    userPoolWebClientId: '4927evlbod672h6m0h2boja5ns',  // From terraform output: cognito_user_pool_client_id
+    userPoolId: 'eu-west-1_mg32ltx41',  // From terraform output: cognito_user_pool_id
+    userPoolWebClientId: '3s9jdapqe6b2ov2jcsvmhf14ut',  // From terraform output: cognito_user_pool_client_id
     identityPoolId: 'eu-west-1:d1eaa64c-d9c3-4e40-98f7-9f0ef9d48ba0',  // From terraform output: cognito_identity_pool_id
     oauth: {
         domain: 'trade-quest-dev-uhmdl40t.auth.eu-west-1.amazoncognito.com',  // From terraform output: cognito_domain
