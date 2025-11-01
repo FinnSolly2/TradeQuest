@@ -1,15 +1,12 @@
-// Configuration - Updated with deployed API Gateway URL
-const API_BASE_URL = 'https://cseoi2lxp7.execute-api.eu-west-1.amazonaws.com/prod';
-
 // Global state
-let currentUser = 'user123';
 let currentPrices = {};
 let currentPortfolio = {};
 let selectedAsset = null;
 
 // Initialize on page load
 window.onload = function() {
-    loadUserData();
+    // Auth manager will handle initialization and call loadUserData if authenticated
+    // Public data can still be loaded
     refreshPrices();
     refreshNews();
     refreshLeaderboard();
@@ -21,11 +18,20 @@ window.onload = function() {
 
 // Load user data and portfolio
 async function loadUserData() {
-    const userId = document.getElementById('user-id').value || 'user123';
-    currentUser = userId;
+    if (!authManager.isAuthenticated()) {
+        console.log('User not authenticated, skipping portfolio load');
+        return;
+    }
+
+    const userId = authManager.getUserId();
+    const jwtToken = authManager.getJwtToken();
 
     try {
-        const response = await fetch(`${API_BASE_URL}/portfolio?user_id=${userId}`);
+        const response = await fetch(`${API_BASE_URL}/portfolio?user_id=${userId}`, {
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`
+            }
+        });
         const result = await response.json();
 
         if (result.success) {
@@ -303,6 +309,11 @@ function closeTradeModal() {
 async function executeTrade(action) {
     if (!selectedAsset) return;
 
+    if (!authManager.isAuthenticated()) {
+        showTradeMessage('Please sign in to trade', 'error');
+        return;
+    }
+
     const quantity = parseInt(document.getElementById('trade-quantity').value);
 
     if (!quantity || quantity <= 0) {
@@ -314,14 +325,18 @@ async function executeTrade(action) {
     messageElement.textContent = 'Executing trade...';
     messageElement.className = 'trade-message';
 
+    const userId = authManager.getUserId();
+    const jwtToken = authManager.getJwtToken();
+
     try {
         const response = await fetch(`${API_BASE_URL}/trade`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwtToken}`
             },
             body: JSON.stringify({
-                user_id: currentUser,
+                user_id: userId,
                 symbol: selectedAsset.symbol,
                 action: action,
                 quantity: quantity

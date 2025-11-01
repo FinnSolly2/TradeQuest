@@ -402,3 +402,146 @@ section h2 {
     background: #fee2e2;
     color: #991b1b;
 }
+
+/* Authentication Styles */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.auth-box {
+    background: white;
+    border-radius: 15px;
+    padding: 40px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.auth-box h1 {
+    color: #667eea;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.auth-box .subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-form h2 {
+    color: #667eea;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"],
+.auth-form input[type="text"],
+.auth-form input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: border-color 0.3s;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.initial-balance-input {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.initial-balance-input label {
+    font-weight: 600;
+    color: #666;
+}
+
+.auth-btn {
+    width: 100%;
+    padding: 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.auth-btn:hover {
+    background: #5568d3;
+}
+
+.auth-message {
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    font-weight: 500;
+    min-height: 20px;
+}
+
+.auth-link {
+    text-align: center;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.auth-link a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-link a:hover {
+    text-decoration: underline;
+}
+
+/* User Menu */
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-email {
+    color: white;
+    font-weight: 500;
+    padding: 8px 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+}
+
+.signout-btn {
+    padding: 8px 20px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #667eea;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.signout-btn:hover {
+    background: white;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}

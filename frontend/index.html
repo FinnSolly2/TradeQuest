@@ -5,22 +5,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trade Quest - Trading Simulator</title>
     <link rel="stylesheet" href="style.css">
+
+    <!-- Amazon Cognito Identity SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.6/dist/amazon-cognito-identity.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header>
+    <!-- Authentication Container -->
+    <div id="auth-container" class="auth-container">
+        <div class="auth-box">
             <h1>Trade Quest</h1>
             <p class="subtitle">Cloud-Native Trading Simulator</p>
+
+            <!-- Sign In Form -->
+            <div id="signin-form" class="auth-form">
+                <h2>Sign In</h2>
+                <input type="email" id="signin-email" placeholder="Email" autocomplete="email">
+                <input type="password" id="signin-password" placeholder="Password" autocomplete="current-password">
+                <button onclick="handleSignIn()" class="auth-btn">Sign In</button>
+                <p class="auth-message" id="signin-message"></p>
+                <p class="auth-link">Don't have an account? <a href="#" onclick="showSignUpForm(); return false;">Sign Up</a></p>
+                <p class="auth-link"><a href="#" onclick="showForgotPasswordForm(); return false;">Forgot Password?</a></p>
+            </div>
+
+            <!-- Sign Up Form -->
+            <div id="signup-form" class="auth-form" style="display: none;">
+                <h2>Sign Up</h2>
+                <input type="email" id="signup-email" placeholder="Email" autocomplete="email">
+                <input type="password" id="signup-password" placeholder="Password (min 8 chars)" autocomplete="new-password">
+                <input type="password" id="signup-confirm-password" placeholder="Confirm Password" autocomplete="new-password">
+                <div class="initial-balance-input">
+                    <label for="signup-initial-balance">Initial Balance:</label>
+                    <input type="number" id="signup-initial-balance" value="100000" min="10000" max="1000000" step="10000">
+                </div>
+                <button onclick="handleSignUp()" class="auth-btn">Sign Up</button>
+                <p class="auth-message" id="signup-message"></p>
+                <p class="auth-link">Already have an account? <a href="#" onclick="showSignInForm(); return false;">Sign In</a></p>
+            </div>
+
+            <!-- Verification Form -->
+            <div id="verification-form" class="auth-form" style="display: none;">
+                <h2>Verify Email</h2>
+                <p>A verification code has been sent to your email.</p>
+                <input type="text" id="verification-code" placeholder="Verification Code">
+                <button onclick="handleVerification()" class="auth-btn">Verify</button>
+                <p class="auth-message" id="verification-message"></p>
+                <p class="auth-link"><a href="#" onclick="resendVerificationCode(); return false;">Resend Code</a></p>
+                <p class="auth-link"><a href="#" onclick="showSignInForm(); return false;">Back to Sign In</a></p>
+            </div>
+
+            <!-- Forgot Password Form -->
+            <div id="forgot-password-form" class="auth-form" style="display: none;">
+                <h2>Reset Password</h2>
+                <input type="email" id="forgot-email" placeholder="Email" autocomplete="email">
+                <button onclick="handleForgotPassword()" class="auth-btn">Send Reset Code</button>
+                <p class="auth-message" id="forgot-message"></p>
+                <p class="auth-link"><a href="#" onclick="showSignInForm(); return false;">Back to Sign In</a></p>
+            </div>
+
+            <!-- Reset Password Form -->
+            <div id="reset-password-form" class="auth-form" style="display: none;">
+                <h2>Reset Password</h2>
+                <p>Enter the verification code sent to your email.</p>
+                <input type="text" id="reset-code" placeholder="Verification Code">
+                <input type="password" id="reset-password" placeholder="New Password" autocomplete="new-password">
+                <input type="password" id="reset-confirm-password" placeholder="Confirm New Password" autocomplete="new-password">
+                <button onclick="handleResetPassword()" class="auth-btn">Reset Password</button>
+                <p class="auth-message" id="reset-message"></p>
+                <p class="auth-link"><a href="#" onclick="showSignInForm(); return false;">Back to Sign In</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="container" style="display: none;">
+        <!-- Header -->
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <h1>Trade Quest</h1>
+                    <p class="subtitle">Cloud-Native Trading Simulator</p>
+                </div>
+                <div class="user-menu">
+                    <span id="user-email-display" class="user-email"></span>
+                    <button onclick="authManager.signOut()" class="signout-btn">Sign Out</button>
+                </div>
+            </div>
         </header>
 
         <!-- User Info Section -->
         <section class="user-info">
-            <div class="info-card">
-                <label for="user-id">User ID:</label>
-                <input type="text" id="user-id" placeholder="Enter your user ID" value="user123">
-                <button onclick="loadUserData()">Load Account</button>
-            </div>
             <div class="balance-display">
                 <div class="balance-item">
                     <span class="label">Cash Balance:</span>
@@ -104,6 +177,9 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script src="auth-ui.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
