@@ -30,13 +30,10 @@
             <!-- Sign Up Form -->
             <div id="signup-form" class="auth-form" style="display: none;">
                 <h2>Sign Up</h2>
+                <p style="text-align: center; color: #666; margin-bottom: 10px;">Start with $100,000 to trade!</p>
                 <input type="email" id="signup-email" placeholder="Email" autocomplete="email">
                 <input type="password" id="signup-password" placeholder="Password (min 8 chars)" autocomplete="new-password">
                 <input type="password" id="signup-confirm-password" placeholder="Confirm Password" autocomplete="new-password">
-                <div class="initial-balance-input">
-                    <label for="signup-initial-balance">Initial Balance:</label>
-                    <input type="number" id="signup-initial-balance" value="100000" min="10000" max="1000000" step="10000">
-                </div>
                 <button onclick="handleSignUp()" class="auth-btn">Sign Up</button>
                 <p class="auth-message" id="signup-message"></p>
                 <p class="auth-link">Already have an account? <a href="#" onclick="showSignInForm(); return false;">Sign In</a></p>

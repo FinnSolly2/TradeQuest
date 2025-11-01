@@ -97,7 +97,6 @@ async function handleSignUp() {
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     const confirmPassword = document.getElementById('signup-confirm-password').value;
-    const initialBalance = parseInt(document.getElementById('signup-initial-balance').value);
 
     if (!email || !password || !confirmPassword) {
         showMessage('signup-message', 'Please fill in all fields', true);
@@ -114,15 +113,10 @@ async function handleSignUp() {
         return;
     }
 
-    if (initialBalance < 10000 || initialBalance > 1000000) {
-        showMessage('signup-message', 'Initial balance must be between $10,000 and $1,000,000', true);
-        return;
-    }
-
     showMessage('signup-message', 'Creating account...');
 
     try {
-        await authManager.signUp(email, password, initialBalance);
+        await authManager.signUp(email, password);
         pendingVerificationEmail = email;
         showMessage('signup-message', 'Account created! Check your email for verification code.');
         setTimeout(() => showVerificationForm(), 2000);

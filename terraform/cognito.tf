@@ -44,19 +44,6 @@ resource "aws_cognito_user_pool" "trade_quest" {
     }
   }
 
-  # Custom attributes for trading data
-  schema {
-    attribute_data_type = "Number"
-    name                = "initial_balance"
-    mutable             = true
-    developer_only_attribute = false
-
-    number_attribute_constraints {
-      min_value = 0
-      max_value = 1000000
-    }
-  }
-
   # User pool tags
   tags = {
     Name        = "${var.project_name}-user-pool-${var.environment}"
@@ -112,8 +99,7 @@ resource "aws_cognito_user_pool_client" "trade_quest_web" {
   # Read/Write attributes
   read_attributes = [
     "email",
-    "email_verified",
-    "custom:initial_balance"
+    "email_verified"
   ]
 
   write_attributes = [

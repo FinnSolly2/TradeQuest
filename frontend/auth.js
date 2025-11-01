@@ -60,7 +60,7 @@ class AuthManager {
     }
 
     // Sign up new user
-    signUp(email, password, initialBalance = 100000) {
+    signUp(email, password) {
         const attributeList = [];
 
         const dataEmail = {
@@ -68,13 +68,7 @@ class AuthManager {
             Value: email
         };
 
-        const dataInitialBalance = {
-            Name: 'custom:initial_balance',
-            Value: initialBalance.toString()
-        };
-
         attributeList.push(new AmazonCognitoIdentity.CognitoUserAttribute(dataEmail));
-        attributeList.push(new AmazonCognitoIdentity.CognitoUserAttribute(dataInitialBalance));
 
         return new Promise((resolve, reject) => {
             this.userPool.signUp(email, password, attributeList, null, (err, result) => {
