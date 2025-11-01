@@ -628,6 +628,19 @@ resource "aws_apigatewayv2_stage" "prod" {
   auto_deploy = true
 }
 
+# Cognito Authorizer
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.trade_quest_api.id
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+  name             = "${var.project_name}-cognito-authorizer-${var.environment}"
+
+  jwt_configuration {
+    audience = [aws_cognito_user_pool_client.trade_quest_web.id]
+    issuer   = "https://${aws_cognito_user_pool.trade_quest.endpoint}"
+  }
+}
+
 # Lambda integrations
 resource "aws_apigatewayv2_integration" "get_prices" {
   api_id           = aws_apigatewayv2_api.trade_quest_api.id
@@ -676,9 +689,11 @@ resource "aws_apigatewayv2_integration" "execute_trade" {
 }
 
 resource "aws_apigatewayv2_route" "execute_trade" {
-  api_id    = aws_apigatewayv2_api.trade_quest_api.id
-  route_key = "POST /trade"
-  target    = "integrations/${aws_apigatewayv2_integration.execute_trade.id}"
+  api_id             = aws_apigatewayv2_api.trade_quest_api.id
+  route_key          = "POST /trade"
+  target             = "integrations/${aws_apigatewayv2_integration.execute_trade.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_lambda_permission" "api_execute_trade" {
@@ -696,9 +711,11 @@ resource "aws_apigatewayv2_integration" "get_portfolio" {
 }
 
 resource "aws_apigatewayv2_route" "get_portfolio" {
-  api_id    = aws_apigatewayv2_api.trade_quest_api.id
-  route_key = "GET /portfolio"
-  target    = "integrations/${aws_apigatewayv2_integration.get_portfolio.id}"
+  api_id             = aws_apigatewayv2_api.trade_quest_api.id
+  route_key          = "GET /portfolio"
+  target             = "integrations/${aws_apigatewayv2_integration.get_portfolio.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_lambda_permission" "api_get_portfolio" {

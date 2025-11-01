@@ -33,12 +33,32 @@ output "leaderboard_table" {
 # Cognito Outputs
 output "cognito_user_pool_id" {
   description = "Cognito User Pool ID"
-  value       = aws_cognito_user_pool.trade_quest_pool.id
+  value       = aws_cognito_user_pool.trade_quest.id
 }
 
 output "cognito_user_pool_client_id" {
   description = "Cognito User Pool Client ID"
-  value       = aws_cognito_user_pool_client.trade_quest_client.id
+  value       = aws_cognito_user_pool_client.trade_quest_web.id
+}
+
+output "cognito_user_pool_endpoint" {
+  description = "Cognito User Pool Endpoint"
+  value       = aws_cognito_user_pool.trade_quest.endpoint
+}
+
+output "cognito_identity_pool_id" {
+  description = "Cognito Identity Pool ID"
+  value       = aws_cognito_identity_pool.trade_quest.id
+}
+
+output "cognito_domain" {
+  description = "Cognito Hosted UI Domain"
+  value       = aws_cognito_user_pool_domain.trade_quest.domain
+}
+
+output "cognito_region" {
+  description = "AWS Region for Cognito"
+  value       = var.aws_region
 }
 
 # API Gateway Outputs
