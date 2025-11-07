@@ -1,7 +1,7 @@
 import json
 import os
 import boto3
-import yfinance as yf
+import requests
 from datetime import datetime
 import time
 
@@ -9,7 +9,7 @@ s3_client = boto3.client('s3')
 
 def lambda_handler(event, context):
     """
-    Collects current prices using yfinance every minute.
+    Collects current prices using Yahoo Finance query API.
     Maintains a rolling 60-minute history for each asset.
     This data is used by price_simulator to calculate statistics.
     """
@@ -34,69 +34,70 @@ def lambda_handler(event, context):
             'assets': {}
         }
 
-    # Fetch current prices using yfinance
+    # Fetch current prices using Yahoo Finance query API (lightweight, no library needed)
     newly_fetched = 0
     for symbol in assets_to_track:
         try:
-            # Use yfinance to get current data
-            ticker = yf.Ticker(symbol)
+            # Yahoo Finance query API - free, no authentication needed
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
+            headers = {'User-Agent': 'Mozilla/5.0'}
 
-            # Get current price and day stats
-            info = ticker.info
-            current_price = info.get('currentPrice') or info.get('regularMarketPrice')
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
 
-            # Fallback: try getting latest price from history
-            if not current_price:
-                hist = ticker.history(period='1d', interval='1m')
-                if not hist.empty:
-                    current_price = hist['Close'].iloc[-1]
-                    high = hist['High'].iloc[-1]
-                    low = hist['Low'].iloc[-1]
-                    open_price = hist['Open'].iloc[-1]
-                    previous_close = info.get('previousClose', current_price)
-                else:
-                    print(f"✗ {symbol}: No price data available")
-                    continue
-            else:
-                high = info.get('dayHigh', current_price)
-                low = info.get('dayLow', current_price)
-                open_price = info.get('open', current_price)
-                previous_close = info.get('previousClose', current_price)
+            data = response.json()
 
-            if current_price and current_price > 0:
-                # Initialize asset history if not exists
-                if symbol not in history_data['assets']:
-                    history_data['assets'][symbol] = {
-                        'symbol': symbol,
-                        'data_points': []
+            # Extract price data from response
+            if 'chart' in data and 'result' in data['chart'] and len(data['chart']['result']) > 0:
+                result = data['chart']['result'][0]
+                meta = result.get('meta', {})
+
+                current_price = meta.get('regularMarketPrice')
+
+                if current_price and current_price > 0:
+                    # Get additional price info
+                    high = meta.get('regularMarketDayHigh', current_price)
+                    low = meta.get('regularMarketDayLow', current_price)
+                    open_price = meta.get('regularMarketOpen', current_price)
+                    previous_close = meta.get('previousClose', current_price)
+
+                    # Initialize asset history if not exists
+                    if symbol not in history_data['assets']:
+                        history_data['assets'][symbol] = {
+                            'symbol': symbol,
+                            'data_points': []
+                        }
+
+                    # Add new data point
+                    data_point = {
+                        'timestamp': current_timestamp,
+                        'datetime': current_datetime.isoformat(),
+                        'price': float(current_price),
+                        'high': float(high),
+                        'low': float(low),
+                        'open': float(open_price),
+                        'previous_close': float(previous_close)
                     }
 
-                # Add new data point
-                data_point = {
-                    'timestamp': current_timestamp,
-                    'datetime': current_datetime.isoformat(),
-                    'price': float(current_price),
-                    'high': float(high),
-                    'low': float(low),
-                    'open': float(open_price),
-                    'previous_close': float(previous_close)
-                }
+                    history_data['assets'][symbol]['data_points'].append(data_point)
 
-                history_data['assets'][symbol]['data_points'].append(data_point)
+                    # Keep only last 60 data points (60 minutes)
+                    if len(history_data['assets'][symbol]['data_points']) > 60:
+                        history_data['assets'][symbol]['data_points'] = \
+                            history_data['assets'][symbol]['data_points'][-60:]
 
-                # Keep only last 60 data points (60 minutes)
-                if len(history_data['assets'][symbol]['data_points']) > 60:
-                    history_data['assets'][symbol]['data_points'] = \
-                        history_data['assets'][symbol]['data_points'][-60:]
-
-                count = len(history_data['assets'][symbol]['data_points'])
-                print(f"✓ {symbol}: ${current_price:.2f} (collected {count}/60 data points)")
-                newly_fetched += 1
+                    count = len(history_data['assets'][symbol]['data_points'])
+                    print(f"✓ {symbol}: ${current_price:.2f} (collected {count}/60 data points)")
+                    newly_fetched += 1
+                else:
+                    print(f"✗ {symbol}: No valid price data")
             else:
-                print(f"✗ {symbol}: No valid price data")
+                print(f"✗ {symbol}: Invalid response structure")
 
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             print(f"Error fetching {symbol}: {str(e)}")
+        except Exception as e:
+            print(f"Unexpected error for {symbol}: {str(e)}")
 
     # Update metadata
     history_data['last_updated'] = current_datetime.isoformat()
