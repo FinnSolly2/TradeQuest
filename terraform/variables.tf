@@ -40,11 +40,11 @@ variable "assets_to_track" {
     "MSFT",
     "TSLA",
     "AMZN",
-    "ASML.AS",
-    "MC.PA",
-    "SAP",
-    "OR.PA",
-    "SIE.DE"
+    "NVDA",
+    "META",
+    "NFLX",
+    "AMD",
+    "INTC"
   ]
 }
 
