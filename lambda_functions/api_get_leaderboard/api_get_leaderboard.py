@@ -38,6 +38,7 @@ def lambda_handler(event, context):
 
         for user in users:
             user_id = user['user_id']
+            username = user.get('username', user_id[:8])  # Use username or truncated user_id as fallback
             balance = user.get('balance', Decimal('100000'))
             portfolio = user.get('portfolio', {})
             total_trades = user.get('total_trades', 0)
@@ -57,6 +58,7 @@ def lambda_handler(event, context):
 
             leaderboard_entries.append({
                 'user_id': user_id,
+                'username': username,
                 'total_value': float(total_value),
                 'profit_loss': float(profit_loss),
                 'profit_loss_percent': float(profit_loss_percent),

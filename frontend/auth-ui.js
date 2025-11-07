@@ -94,12 +94,23 @@ async function handleSignIn() {
 
 // Handle Sign Up
 async function handleSignUp() {
+    const username = document.getElementById('signup-username').value.trim();
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
     const confirmPassword = document.getElementById('signup-confirm-password').value;
 
-    if (!email || !password || !confirmPassword) {
+    if (!username || !email || !password || !confirmPassword) {
         showMessage('signup-message', 'Please fill in all fields', true);
+        return;
+    }
+
+    if (username.length < 3 || username.length > 20) {
+        showMessage('signup-message', 'Username must be 3-20 characters', true);
+        return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        showMessage('signup-message', 'Username can only contain letters, numbers, and underscores', true);
         return;
     }
 
@@ -116,7 +127,7 @@ async function handleSignUp() {
     showMessage('signup-message', 'Creating account...');
 
     try {
-        await authManager.signUp(email, password);
+        await authManager.signUp(email, password, username);
         pendingVerificationEmail = email;
         showMessage('signup-message', 'Account created! Check your email for verification code.');
         setTimeout(() => showVerificationForm(), 2000);

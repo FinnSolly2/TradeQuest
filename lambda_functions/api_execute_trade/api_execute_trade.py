@@ -4,6 +4,7 @@ import boto3
 from decimal import Decimal
 import time
 import uuid
+import base64
 
 dynamodb = boto3.resource('dynamodb')
 s3_client = boto3.client('s3')
@@ -20,6 +21,22 @@ def lambda_handler(event, context):
     trades_table = dynamodb.Table(trades_table_name)
 
     try:
+        # Extract username from JWT token
+        username = None
+        auth_header = event.get('headers', {}).get('Authorization', '') or event.get('headers', {}).get('authorization', '')
+        if auth_header:
+            try:
+                token = auth_header.replace('Bearer ', '')
+                # JWT tokens are base64 encoded, split into 3 parts
+                payload = token.split('.')[1]
+                # Add padding if needed
+                payload += '=' * (4 - len(payload) % 4)
+                decoded = base64.b64decode(payload)
+                token_data = json.loads(decoded)
+                username = token_data.get('preferred_username', token_data.get('cognito:username'))
+            except Exception as e:
+                print(f"Warning: Could not extract username from token: {str(e)}")
+
         # Parse request body
         body = json.loads(event.get('body', '{}'))
         user_id = body.get('user_id')
@@ -60,6 +77,7 @@ def lambda_handler(event, context):
                 # Create new user with initial balance
                 user_data = {
                     'user_id': user_id,
+                    'username': username if username else user_id[:8],  # Use extracted username or truncated ID
                     'balance': Decimal('100000'),  # Initial balance
                     'portfolio': {},
                     'total_trades': 0,
@@ -68,6 +86,9 @@ def lambda_handler(event, context):
                 users_table.put_item(Item=user_data)
             else:
                 user_data = user_response['Item']
+                # Update username if not set and we have one from token
+                if username and 'username' not in user_data:
+                    user_data['username'] = username
 
         except Exception as e:
             return error_response(500, f'Error fetching user data: {str(e)}')

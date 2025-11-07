@@ -44,6 +44,18 @@ resource "aws_cognito_user_pool" "trade_quest" {
     }
   }
 
+  schema {
+    attribute_data_type = "String"
+    name                = "preferred_username"
+    required            = false
+    mutable             = true
+
+    string_attribute_constraints {
+      min_length = 3
+      max_length = 20
+    }
+  }
+
   # User pool tags
   tags = {
     Name        = "${var.project_name}-user-pool-${var.environment}"
@@ -99,11 +111,13 @@ resource "aws_cognito_user_pool_client" "trade_quest_web" {
   # Read/Write attributes
   read_attributes = [
     "email",
-    "email_verified"
+    "email_verified",
+    "preferred_username"
   ]
 
   write_attributes = [
-    "email"
+    "email",
+    "preferred_username"
   ]
 }
 

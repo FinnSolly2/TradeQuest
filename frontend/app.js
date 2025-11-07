@@ -244,7 +244,7 @@ function displayLeaderboard(leaderboard) {
             <thead>
                 <tr>
                     <th>Rank</th>
-                    <th>User ID</th>
+                    <th>Username</th>
                     <th>Total Value</th>
                     <th>P/L</th>
                     <th>Trades</th>
@@ -261,7 +261,7 @@ function displayLeaderboard(leaderboard) {
         html += `
             <tr>
                 <td><span class="rank-medal">${medal}</span> ${entry.rank}</td>
-                <td>${entry.user_id}</td>
+                <td>${entry.username || entry.user_id}</td>
                 <td>$${entry.total_value.toFixed(2)}</td>
                 <td style="color: ${plColor}; font-weight: bold;">
                     ${plSign}$${entry.profit_loss.toFixed(2)} (${plSign}${entry.profit_loss_percent.toFixed(2)}%)
