@@ -475,7 +475,9 @@ resource "aws_lambda_function" "api_get_leaderboard" {
 
   environment {
     variables = {
-      LEADERBOARD_TABLE = aws_dynamodb_table.leaderboard.name
+      LEADERBOARD_TABLE  = aws_dynamodb_table.leaderboard.name
+      USERS_TABLE        = aws_dynamodb_table.users.name
+      MARKET_DATA_BUCKET = aws_s3_bucket.market_data.id
     }
   }
 }
