@@ -35,16 +35,16 @@ variable "assets_to_track" {
   description = "List of asset symbols to track"
   type        = list(string)
   default = [
-    "AAPL",
-    "GOOGL",
-    "MSFT",
-    "TSLA",
-    "AMZN",
-    "NVDA",
-    "META",
-    "NFLX",
-    "AMD",
-    "INTC"
+    "EURUSD=X",
+    "GBPUSD=X",
+    "USDJPY=X",
+    "AUDUSD=X",
+    "USDCAD=X",
+    "USDCHF=X",
+    "NZDUSD=X",
+    "EURGBP=X",
+    "EURJPY=X",
+    "GBPJPY=X"
   ]
 }
 
