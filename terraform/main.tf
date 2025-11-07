@@ -321,7 +321,6 @@ resource "aws_lambda_function" "price_collector" {
 
   environment {
     variables = {
-      FINNHUB_API_KEY    = var.finnhub_api_key
       MARKET_DATA_BUCKET = aws_s3_bucket.market_data.id
       ASSETS_TO_TRACK    = jsonencode(var.assets_to_track)
     }

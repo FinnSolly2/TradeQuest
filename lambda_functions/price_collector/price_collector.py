@@ -1,7 +1,7 @@
 import json
 import os
 import boto3
-import requests
+import yfinance as yf
 from datetime import datetime
 import time
 
@@ -9,11 +9,10 @@ s3_client = boto3.client('s3')
 
 def lambda_handler(event, context):
     """
-    Collects current prices from Finnhub every minute.
+    Collects current prices using yfinance every minute.
     Maintains a rolling 60-minute history for each asset.
     This data is used by price_simulator to calculate statistics.
     """
-    finnhub_api_key = os.environ['FINNHUB_API_KEY']
     market_data_bucket = os.environ['MARKET_DATA_BUCKET']
     assets_to_track = json.loads(os.environ['ASSETS_TO_TRACK'])
 
@@ -35,22 +34,36 @@ def lambda_handler(event, context):
             'assets': {}
         }
 
-    # Fetch current prices from Finnhub
+    # Fetch current prices using yfinance
     newly_fetched = 0
     for symbol in assets_to_track:
         try:
-            # Finnhub quote endpoint (free tier)
-            url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={finnhub_api_key}"
+            # Use yfinance to get current data
+            ticker = yf.Ticker(symbol)
 
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
+            # Get current price and day stats
+            info = ticker.info
+            current_price = info.get('currentPrice') or info.get('regularMarketPrice')
 
-            data = response.json()
+            # Fallback: try getting latest price from history
+            if not current_price:
+                hist = ticker.history(period='1d', interval='1m')
+                if not hist.empty:
+                    current_price = hist['Close'].iloc[-1]
+                    high = hist['High'].iloc[-1]
+                    low = hist['Low'].iloc[-1]
+                    open_price = hist['Open'].iloc[-1]
+                    previous_close = info.get('previousClose', current_price)
+                else:
+                    print(f"✗ {symbol}: No price data available")
+                    continue
+            else:
+                high = info.get('dayHigh', current_price)
+                low = info.get('dayLow', current_price)
+                open_price = info.get('open', current_price)
+                previous_close = info.get('previousClose', current_price)
 
-            # Finnhub quote response: {c: current_price, h: high, l: low, o: open, pc: previous_close, t: timestamp}
-            if data.get('c') and data.get('c') > 0:
-                current_price = data['c']
-
+            if current_price and current_price > 0:
                 # Initialize asset history if not exists
                 if symbol not in history_data['assets']:
                     history_data['assets'][symbol] = {
@@ -62,11 +75,11 @@ def lambda_handler(event, context):
                 data_point = {
                     'timestamp': current_timestamp,
                     'datetime': current_datetime.isoformat(),
-                    'price': current_price,
-                    'high': data.get('h', current_price),
-                    'low': data.get('l', current_price),
-                    'open': data.get('o', current_price),
-                    'previous_close': data.get('pc', current_price)
+                    'price': float(current_price),
+                    'high': float(high),
+                    'low': float(low),
+                    'open': float(open_price),
+                    'previous_close': float(previous_close)
                 }
 
                 history_data['assets'][symbol]['data_points'].append(data_point)
@@ -80,15 +93,10 @@ def lambda_handler(event, context):
                 print(f"✓ {symbol}: ${current_price:.2f} (collected {count}/60 data points)")
                 newly_fetched += 1
             else:
-                print(f"✗ {symbol}: No valid price data in response")
+                print(f"✗ {symbol}: No valid price data")
 
-            # Rate limiting - Finnhub free tier allows 60 calls/minute
-            time.sleep(1.1)
-
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching {symbol}: {str(e)}")
         except Exception as e:
-            print(f"Unexpected error for {symbol}: {str(e)}")
+            print(f"Error fetching {symbol}: {str(e)}")
 
     # Update metadata
     history_data['last_updated'] = current_datetime.isoformat()
