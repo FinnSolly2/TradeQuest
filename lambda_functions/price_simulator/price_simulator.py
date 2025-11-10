@@ -83,18 +83,18 @@ def lambda_handler(event, context):
     date_str = datetime.utcnow().strftime('%Y-%m-%d')
     time_str = datetime.utcnow().strftime('%H-%M-%S')
 
-    # Get the collected price history (past hour)
+    # Get the collected price history (past hour - 60 minutes of data)
     try:
         response = s3_client.get_object(
             Bucket=market_data_bucket,
-            Key='collected_prices/rolling_history_3600sec.json'
+            Key='collected_prices/rolling_history_60min.json'
         )
         history_data = json.loads(response['Body'].read().decode('utf-8'))
         print(f"Loaded price history for {len(history_data['assets'])} assets")
 
         # Check if we have enough data
         if not history_data.get('stats', {}).get('ready_for_simulation', False):
-            print(f"⚠️  Warning: Only {history_data['stats']['assets_with_full_hour']} assets have full 3600sec data")
+            print(f"⚠️  Warning: Only {history_data['stats']['assets_with_full_hour']} assets have full 60min data")
     except Exception as e:
         print(f"Error loading price history: {str(e)}")
         raise

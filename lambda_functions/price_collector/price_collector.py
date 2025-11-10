@@ -9,9 +9,9 @@ s3_client = boto3.client('s3')
 
 def lambda_handler(event, context):
     """
-    Collects current prices using Yahoo Finance query API.
-    Maintains a rolling 3600-second (1 hour) history for each asset.
-    This data is used by price_simulator to calculate statistics.
+    Collects current prices using Yahoo Finance query API every minute.
+    Maintains a rolling 60-minute (1 hour) history for each asset.
+    This data is used by price_simulator to generate 3600 simulated prices (1 per second).
     """
     market_data_bucket = os.environ['MARKET_DATA_BUCKET']
     assets_to_track = json.loads(os.environ['ASSETS_TO_TRACK'])
@@ -23,7 +23,7 @@ def lambda_handler(event, context):
     try:
         response = s3_client.get_object(
             Bucket=market_data_bucket,
-            Key='collected_prices/rolling_history_3600sec.json'
+            Key='collected_prices/rolling_history_60min.json'
         )
         history_data = json.loads(response['Body'].read().decode('utf-8'))
         print(f"Loaded existing history with {len(history_data.get('assets', {}))} assets")
@@ -81,13 +81,13 @@ def lambda_handler(event, context):
 
                     history_data['assets'][symbol]['data_points'].append(data_point)
 
-                    # Keep only last 3600 data points (3600 seconds = 1 hour)
-                    if len(history_data['assets'][symbol]['data_points']) > 3600:
+                    # Keep only last 60 data points (60 minutes = 1 hour)
+                    if len(history_data['assets'][symbol]['data_points']) > 60:
                         history_data['assets'][symbol]['data_points'] = \
-                            history_data['assets'][symbol]['data_points'][-3600:]
+                            history_data['assets'][symbol]['data_points'][-60:]
 
                     count = len(history_data['assets'][symbol]['data_points'])
-                    print(f"✓ {symbol}: ${current_price:.2f} (collected {count}/3600 data points)")
+                    print(f"✓ {symbol}: ${current_price:.2f} (collected {count}/60 data points)")
                     newly_fetched += 1
                 else:
                     print(f"✗ {symbol}: No valid price data")
@@ -106,7 +106,7 @@ def lambda_handler(event, context):
     # Calculate completeness stats
     assets_with_full_hour = 0
     for symbol, asset_data in history_data['assets'].items():
-        if len(asset_data['data_points']) >= 3600:
+        if len(asset_data['data_points']) >= 60:
             assets_with_full_hour += 1
 
     history_data['stats'] = {
@@ -116,7 +116,7 @@ def lambda_handler(event, context):
     }
 
     # Save updated history
-    s3_key = 'collected_prices/rolling_history_3600sec.json'
+    s3_key = 'collected_prices/rolling_history_60min.json'
     try:
         s3_client.put_object(
             Bucket=market_data_bucket,
@@ -124,7 +124,7 @@ def lambda_handler(event, context):
             Body=json.dumps(history_data, indent=2),
             ContentType='application/json'
         )
-        print(f"\n✅ History saved: {assets_with_full_hour}/{len(assets_to_track)} assets have full 3600sec data")
+        print(f"\n✅ History saved: {assets_with_full_hour}/{len(assets_to_track)} assets have full 60min data")
         print(f"   Ready for simulation: {history_data['stats']['ready_for_simulation']}")
     except Exception as e:
         print(f"Error saving history to S3: {str(e)}")
