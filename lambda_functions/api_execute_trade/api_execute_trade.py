@@ -33,7 +33,18 @@ def lambda_handler(event, context):
                 payload += '=' * (4 - len(payload) % 4)
                 decoded = base64.b64decode(payload)
                 token_data = json.loads(decoded)
-                username = token_data.get('preferred_username', token_data.get('cognito:username'))
+
+                # Try multiple possible username fields
+                username = (
+                    token_data.get('preferred_username') or
+                    token_data.get('cognito:username') or
+                    token_data.get('email') or
+                    token_data.get('name')
+                )
+
+                # Debug: log available fields
+                print(f"JWT token fields: {list(token_data.keys())}")
+                print(f"Extracted username: {username}")
             except Exception as e:
                 print(f"Warning: Could not extract username from token: {str(e)}")
 
