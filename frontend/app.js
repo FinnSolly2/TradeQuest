@@ -2,6 +2,7 @@
 let currentPrices = {};
 let currentPortfolio = {};
 let selectedAsset = null;
+let lastNewsCount = 0;  // Track number of news articles for notifications
 
 // Initialize on page load
 window.onload = function() {
@@ -15,8 +16,8 @@ window.onload = function() {
     setInterval(refreshPrices, 1000);
     // Auto-refresh portfolio every second to show live P/L changes
     setInterval(loadUserData, 1000);
-    // Refresh news every minute
-    setInterval(refreshNews, 60000);
+    // Refresh news every 10 seconds to catch new articles quickly
+    setInterval(refreshNews, 10000);
 };
 
 // Load user data and portfolio
@@ -172,7 +173,16 @@ async function refreshNews() {
         const result = await response.json();
 
         if (result.success) {
-            displayNews(result.data.articles);
+            const articles = result.data.articles;
+
+            // Check for new articles and show notification
+            if (articles.length > lastNewsCount && lastNewsCount > 0) {
+                const newArticlesCount = articles.length - lastNewsCount;
+                showNewsNotification(articles[0], newArticlesCount);
+            }
+            lastNewsCount = articles.length;
+
+            displayNews(articles);
         } else {
             document.getElementById('news-container').innerHTML =
                 `<p style="color: #ef4444;">Error: ${result.message}</p>`;
@@ -199,19 +209,93 @@ function displayNews(articles) {
         const sentimentClass = article.sentiment === 'positive' ? 'positive' : 'negative';
         const changeIcon = article.sentiment === 'positive' ? '📈' : '📉';
 
+        // Use publish_at (release time) instead of datetime (generation time)
+        const releaseTime = article.publish_at ? new Date(article.publish_at * 1000).toLocaleString() : new Date(article.datetime).toLocaleString();
+
         html += `
             <div class="news-card ${sentimentClass}">
                 <div class="news-headline">${changeIcon} ${article.headline}</div>
                 <div class="news-article">${article.article}</div>
                 <div class="news-meta">
                     <span>${article.symbol}</span>
-                    <span>${new Date(article.datetime).toLocaleString()}</span>
+                    <span>Released: ${releaseTime}</span>
                 </div>
             </div>
         `;
     });
 
     container.innerHTML = html;
+}
+
+// Show news notification popup
+function showNewsNotification(article, count) {
+    // Create notification element if it doesn't exist
+    let notification = document.getElementById('news-notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'news-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 10000;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+            cursor: pointer;
+        `;
+        document.body.appendChild(notification);
+
+        // Add CSS animation
+        if (!document.getElementById('notification-style')) {
+            const style = document.createElement('style');
+            style.id = 'notification-style';
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(400px); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(400px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    const sentimentIcon = article.sentiment === 'positive' ? '📈' : '📉';
+    const countText = count > 1 ? ` (+${count - 1} more)` : '';
+
+    notification.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">
+            🔔 Breaking News${countText}
+        </div>
+        <div style="font-size: 16px; margin-bottom: 4px;">
+            ${sentimentIcon} ${article.headline}
+        </div>
+        <div style="font-size: 12px; opacity: 0.9;">
+            Click to dismiss
+        </div>
+    `;
+
+    // Remove existing click handler and add new one
+    notification.onclick = () => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    };
+
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 8000);
 }
 
 // Refresh leaderboard

@@ -236,7 +236,7 @@ def lambda_handler(event, context):
     try:
         response = s3_client.get_object(
             Bucket=market_data_bucket,
-            Key='simulated_data/latest_simulated_1min.json'
+            Key='simulated_data/latest_simulated_1sec.json'
         )
         simulated_data = json.loads(response['Body'].read().decode('utf-8'))
         print(f"Loaded simulated data for {len(simulated_data['assets'])} assets")

@@ -61,7 +61,7 @@ variable "data_fetch_schedule" {
 }
 
 variable "news_release_schedule" {
-  description = "Rate expression for news release (default: every 15 minutes)"
+  description = "Rate expression for news release (default: every 5 minutes)"
   type        = string
-  default     = "rate(15 minutes)"
+  default     = "rate(5 minutes)"
 }
