@@ -11,8 +11,9 @@ window.onload = function() {
     refreshNews();
     refreshLeaderboard();
 
-    // Auto-refresh every minute (prices change minute-by-minute)
-    setInterval(refreshPrices, 60000);
+    // Auto-refresh prices every second (prices change second-by-second)
+    setInterval(refreshPrices, 1000);
+    // Refresh news every minute
     setInterval(refreshNews, 60000);
 };
 
