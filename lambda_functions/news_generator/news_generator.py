@@ -209,7 +209,8 @@ def create_asset_specific_news(symbol, past_change_pct, future_change_pct, curre
 
 def lambda_handler(event, context):
     """
-    Generates 12 diverse news articles with staggered publication times (5-10 min intervals).
+    Generates 2-3 diverse news articles that are immediately available.
+    Runs every 5 minutes to provide fresh, timely news.
     News types: market-wide, sector, geopolitical, economic, asset-specific
     """
     huggingface_api_key = os.environ.get('HUGGINGFACE_API_KEY', '')
@@ -272,68 +273,67 @@ def lambda_handler(event, context):
 
     movements.sort(key=lambda x: x['volatility'], reverse=True)
 
-    # Generate 12 diverse news articles
+    # Generate 2-3 diverse news articles (runs every 5 minutes, so fewer articles per run)
     news_articles = []
 
-    # Article 1-2: Market-wide news (2 articles)
-    for _ in range(2):
-        market_news = generate_market_wide_news(movements, timestamp)
-        news_articles.append(market_news)
+    # Randomly select article types to generate variety
+    article_types = ['market', 'sector', 'geopolitical', 'economic', 'asset']
+    selected_types = random.sample(article_types, k=random.randint(2, 3))
 
-    # Article 3-4: Sector news (2 articles)
-    for _ in range(2):
-        sector_news = generate_sector_news(movements, timestamp)
-        news_articles.append(sector_news)
+    for article_type in selected_types:
+        if article_type == 'market':
+            news_articles.append(generate_market_wide_news(movements, timestamp))
+        elif article_type == 'sector':
+            news_articles.append(generate_sector_news(movements, timestamp))
+        elif article_type == 'geopolitical':
+            news_articles.append(generate_geopolitical_news(timestamp))
+        elif article_type == 'economic':
+            news_articles.append(generate_economic_data_news(timestamp))
+        elif article_type == 'asset' and movements:
+            # Pick a random top mover
+            asset = random.choice(movements[:min(5, len(movements))])
+            sentiment = 'positive' if asset['future_change_percent'] > 0 else 'negative'
+            news_articles.append(create_asset_specific_news(
+                asset['symbol'],
+                asset['past_change_percent'],
+                asset['future_change_percent'],
+                asset['current_price'],
+                sentiment
+            ))
 
-    # Article 5-6: Geopolitical news (2 articles)
-    for _ in range(2):
-        geo_news = generate_geopolitical_news(timestamp)
-        news_articles.append(geo_news)
+    # All articles are immediately available (publish_at = current time)
+    # This provides instant news every 5 minutes instead of staggered releases
 
-    # Article 7-8: Economic data news (2 articles)
-    for _ in range(2):
-        econ_news = generate_economic_data_news(timestamp)
-        news_articles.append(econ_news)
-
-    # Article 9-12: Asset-specific news (4 articles for top movers)
-    assets_to_cover = min(4, len(movements))
-    for i in range(assets_to_cover):
-        asset = movements[i]
-        sentiment = 'positive' if asset['future_change_percent'] > 0 else 'negative'
-        asset_news = create_asset_specific_news(
-            asset['symbol'],
-            asset['past_change_percent'],
-            asset['future_change_percent'],
-            asset['current_price'],
-            sentiment
+    # Load existing news to append new articles
+    existing_articles = []
+    try:
+        response = s3_client.get_object(
+            Bucket=news_bucket,
+            Key='latest_news.json'
         )
-        news_articles.append(asset_news)
+        existing_data = json.loads(response['Body'].read().decode('utf-8'))
+        existing_articles = existing_data.get('articles', [])
 
-    # Generate staggered publication timestamps (every 5-10 minutes)
-    # Start from current time, publish throughout the hour
-    publish_times = []
-    current_offset = 0
-    for i in range(len(news_articles)):
-        # Random interval between 5-10 minutes (300-600 seconds)
-        interval = random.randint(300, 600)
-        current_offset += interval
-        # Cap at 60 minutes
-        if current_offset > 3600:
-            current_offset = 3600
-        publish_times.append(timestamp + current_offset)
+        # Remove articles older than 1 hour
+        existing_articles = [
+            article for article in existing_articles
+            if article.get('timestamp', 0) > timestamp - 3600
+        ]
+        print(f"Loaded {len(existing_articles)} existing articles (filtered to last hour)")
+    except s3_client.exceptions.NoSuchKey:
+        print("No existing news found, starting fresh")
+    except Exception as e:
+        print(f"Error loading existing news: {str(e)}")
 
-    # Shuffle to randomize order
-    random.shuffle(publish_times)
-
-    # Assign timestamps and create final news objects
-    final_news_articles = []
+    # Create new news articles with immediate availability
+    new_articles = []
     for i, news in enumerate(news_articles):
         news_article = {
             'id': f"news_{timestamp}_{i}",
             'timestamp': timestamp,
             'datetime': datetime.utcnow().isoformat(),
-            'publish_at': publish_times[i],
-            'publish_at_datetime': datetime.fromtimestamp(publish_times[i]).isoformat(),
+            'publish_at': timestamp,  # Immediately available
+            'publish_at_datetime': datetime.utcnow().isoformat(),
             'headline': news['headline'],
             'article': news['article'],
             'category': news['category'],
@@ -342,16 +342,20 @@ def lambda_handler(event, context):
             'actionable': True,
             'valid_until': timestamp + 3600
         }
-        final_news_articles.append(news_article)
-        minutes_delay = (publish_times[i] - timestamp) // 60
-        print(f"✓ {news['category']} news: '{news['headline'][:50]}...' (publishes in {minutes_delay} min)")
+        new_articles.append(news_article)
+        print(f"✓ {news['category']} news: '{news['headline'][:50]}...' (immediately available)")
+
+    # Combine existing and new articles, sort by publish_at (newest first)
+    all_articles = existing_articles + new_articles
+    all_articles.sort(key=lambda x: x.get('publish_at', 0), reverse=True)
 
     news_data = {
         'timestamp': timestamp,
         'datetime': datetime.utcnow().isoformat(),
-        'articles': final_news_articles,
-        'total_articles': len(final_news_articles),
-        'publication_period': '60 minutes',
+        'articles': all_articles,
+        'total_articles': len(all_articles),
+        'new_articles': len(new_articles),
+        'publication_period': '5 minutes',
         'based_on_past_hour': True,
         'predictions_for_next_hour': True
     }
@@ -387,16 +391,17 @@ def lambda_handler(event, context):
     return {
         'statusCode': 200,
         'body': json.dumps({
-            'message': f'Generated {len(final_news_articles)} diverse news articles',
+            'message': f'Generated {len(new_articles)} new articles, {len(all_articles)} total available',
             's3_key': s3_key,
-            'articles_count': len(final_news_articles),
+            'new_articles_count': len(new_articles),
+            'total_articles_count': len(all_articles),
             'timestamp': timestamp,
             'categories': {
-                'market_wide': sum(1 for a in final_news_articles if a['category'] == 'market_wide'),
-                'sector': sum(1 for a in final_news_articles if a['category'] == 'sector'),
-                'geopolitical': sum(1 for a in final_news_articles if a['category'] == 'geopolitical'),
-                'economic': sum(1 for a in final_news_articles if a['category'] == 'economic'),
-                'asset_specific': sum(1 for a in final_news_articles if a['category'] == 'asset_specific')
+                'market_wide': sum(1 for a in new_articles if a['category'] == 'market_wide'),
+                'sector': sum(1 for a in new_articles if a['category'] == 'sector'),
+                'geopolitical': sum(1 for a in new_articles if a['category'] == 'geopolitical'),
+                'economic': sum(1 for a in new_articles if a['category'] == 'economic'),
+                'asset_specific': sum(1 for a in new_articles if a['category'] == 'asset_specific')
             }
         })
     }
