@@ -13,6 +13,8 @@ window.onload = function() {
 
     // Auto-refresh prices every second (prices change second-by-second)
     setInterval(refreshPrices, 1000);
+    // Auto-refresh portfolio every second to show live P/L changes
+    setInterval(loadUserData, 1000);
     // Refresh news every minute
     setInterval(refreshNews, 60000);
 };
