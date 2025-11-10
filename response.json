@@ -1,1 +1,0 @@
-{"statusCode": 200, "body": "{\"message\": \"Collected prices for 8 assets\", \"assets_with_full_hour\": 8, \"total_assets\": 10, \"ready_for_simulation\": true, \"timestamp\": 1762505133}"}
