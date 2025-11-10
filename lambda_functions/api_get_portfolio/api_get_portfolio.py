@@ -61,9 +61,15 @@ def lambda_handler(event, context):
         try:
             response = s3_client.get_object(
                 Bucket=market_data_bucket,
-                Key='simulated_data/latest_simulated_prices.json'
+                Key='simulated_data/latest_simulated_1sec.json'
             )
-            price_data = json.loads(response['Body'].read().decode('utf-8'))
+            simulated_data = json.loads(response['Body'].read().decode('utf-8'))
+
+            # Calculate current second within the hour (0-3599)
+            from datetime import datetime
+            current_time = datetime.utcnow()
+            current_second = (current_time.minute * 60) + current_time.second  # 0-3599
+
         except Exception as e:
             return error_response(500, f'Error fetching price data: {str(e)}')
 
@@ -74,8 +80,15 @@ def lambda_handler(event, context):
         total_cost_basis = Decimal('0')
 
         for symbol, holding in portfolio.items():
-            if symbol in price_data['prices'] and price_data['prices'][symbol]:
-                current_price = Decimal(str(price_data['prices'][symbol]['current']))
+            if symbol in simulated_data['assets'] and simulated_data['assets'][symbol]:
+                asset_data = simulated_data['assets'][symbol]
+
+                # Get the price for the current second
+                if 'seconds' in asset_data and current_second < len(asset_data['seconds']):
+                    current_price = Decimal(str(asset_data['seconds'][current_second]['price']))
+                else:
+                    # Fallback to last available price
+                    current_price = Decimal(str(asset_data['seconds'][-1]['price']))
                 quantity = Decimal(str(holding['quantity']))
                 avg_price = Decimal(str(holding['avg_price']))
 
