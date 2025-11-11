@@ -8,154 +8,180 @@ import random
 
 s3_client = boto3.client('s3')
 
-def generate_market_wide_news(movements, timestamp):
+def generate_ai_news_with_huggingface(api_key, prompt):
     """
-    Generate market-wide news based on overall market movements.
-    Examples: Fed decisions, interest rate changes, market sentiment shifts
+    Generate AI news using Hugging Face API.
+    Uses a small, fast model for text generation.
     """
-    # Calculate average market movement
-    avg_change = sum(m['past_change_percent'] for m in movements) / len(movements) if movements else 0
+    api_url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+    headers = {"Authorization": f"Bearer {api_key}"}
 
-    market_templates = []
+    # Format prompt for instruction-following model
+    formatted_prompt = f"""<s>[INST] {prompt}
 
-    if avg_change < -1:
-        market_templates = [
-            {
-                'headline': "Markets Decline Amid Rising Interest Rate Concerns",
-                'article': f"Major indices fell sharply in the past hour as investors grew increasingly concerned about potential interest rate hikes. The broad sell-off saw average declines of {abs(avg_change):.1f}% across major assets, with traders rotating out of risk assets into safer investments.",
-                'category': 'market_wide',
-                'sentiment': 'negative'
-            },
-            {
-                'headline': "Risk-Off Sentiment Grips Markets as Economic Data Disappoints",
-                'article': f"A wave of selling pressure hit markets following disappointing economic indicators. Average losses of {abs(avg_change):.1f}% reflected growing concerns about economic growth prospects. Analysts suggest investors are positioning defensively ahead of potential volatility.",
-                'category': 'market_wide',
-                'sentiment': 'negative'
-            }
-        ]
-    elif avg_change > 1:
-        market_templates = [
-            {
-                'headline': "Markets Rally on Optimistic Fed Signals",
-                'article': f"Equities surged in the past hour after signals from Federal Reserve officials suggested a more dovish monetary policy stance. The broad rally saw average gains of {avg_change:.1f}% as investors embraced renewed risk appetite.",
-                'category': 'market_wide',
-                'sentiment': 'positive'
-            },
-            {
-                'headline': "Strong Economic Data Fuels Market Optimism",
-                'article': f"Markets pushed higher following better-than-expected economic indicators, with average gains of {avg_change:.1f}%. The positive momentum reflected renewed confidence in economic resilience and corporate earnings potential.",
-                'category': 'market_wide',
-                'sentiment': 'positive'
-            }
-        ]
-    else:
-        market_templates = [
-            {
-                'headline': "Markets Trade Mixed as Investors Await Key Economic Data",
-                'article': "Cautious trading dominated the past hour as investors weighed conflicting signals about economic growth and monetary policy. Major indices showed limited directional conviction ahead of upcoming inflation reports.",
-                'category': 'market_wide',
-                'sentiment': 'neutral'
-            }
-        ]
+Write a neutral, professional financial news article (2-3 sentences) without numbers or percentages. Keep it factual and balanced. [/INST]"""
 
-    return random.choice(market_templates)
+    payload = {
+        "inputs": formatted_prompt,
+        "parameters": {
+            "max_new_tokens": 150,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "do_sample": True
+        }
+    }
+
+    try:
+        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+
+        if isinstance(result, list) and len(result) > 0:
+            generated_text = result[0].get('generated_text', '')
+            # Extract only the response after [/INST]
+            if '[/INST]' in generated_text:
+                generated_text = generated_text.split('[/INST]')[-1].strip()
+            return generated_text
+        else:
+            print(f"Unexpected API response format: {result}")
+            return None
+    except Exception as e:
+        print(f"Error calling Hugging Face API: {str(e)}")
+        return None
 
 
-def generate_sector_news(movements, timestamp):
+def generate_market_wide_news(movements, timestamp, api_key):
     """
-    Generate sector-specific news.
-    Examples: Tech sector rotation, financial sector strength
+    Generate market-wide news using Hugging Face AI.
     """
-    # Group by sectors (simplified - assume symbols indicate sectors)
-    tech_stocks = ['AAPL', 'GOOGL', 'MSFT', 'NVDA', 'META']
-    tech_movements = [m for m in movements if m['symbol'] in tech_stocks]
+    topics = [
+        "central bank monetary policy and its impact on currency markets",
+        "global economic growth trends affecting forex trading",
+        "international trade developments and currency valuations",
+        "inflation concerns and their effect on major currencies"
+    ]
 
-    if tech_movements:
-        avg_tech_change = sum(m['past_change_percent'] for m in tech_movements) / len(tech_movements)
+    topic = random.choice(topics)
+    prompt = f"Write a brief financial news update about {topic}."
 
-        if avg_tech_change > 0.5:
-            return {
-                'headline': "Technology Sector Leads Market Higher on AI Optimism",
-                'article': f"Technology stocks outperformed broader markets in the past hour, rising an average of {avg_tech_change:.1f}%. The sector strength came amid renewed enthusiasm for artificial intelligence applications and cloud computing growth prospects.",
-                'category': 'sector',
-                'sentiment': 'positive'
-            }
-        elif avg_tech_change < -0.5:
-            return {
-                'headline': "Tech Stocks Under Pressure as Growth Concerns Mount",
-                'article': f"The technology sector underperformed in recent trading, declining {abs(avg_tech_change):.1f}% as investors questioned high valuations. Concerns about regulatory scrutiny and slowing user growth weighed on sentiment.",
-                'category': 'sector',
-                'sentiment': 'negative'
-            }
+    article = generate_ai_news_with_huggingface(api_key, prompt)
+
+    if not article:
+        # Fallback to template if API fails
+        article = "Currency markets continue responding to evolving economic conditions. Traders are monitoring central bank policies and economic indicators for guidance on future exchange rate movements."
+
+    # Generate headline using AI
+    headline_prompt = f"Write a short, neutral news headline (max 10 words) about: {topic}"
+    headline = generate_ai_news_with_huggingface(api_key, headline_prompt)
+
+    if not headline or len(headline) > 100:
+        headline = "Currency Markets React to Economic Developments"
 
     return {
-        'headline': "Sector Rotation Continues as Investors Rebalance Portfolios",
-        'article': "Investors continued rotating between sectors in the past hour, with defensive stocks gaining ground relative to growth-oriented names. The shift reflected ongoing uncertainty about economic growth trajectories.",
+        'headline': headline.strip(),
+        'article': article.strip(),
+        'category': 'market_wide',
+        'sentiment': 'neutral'
+    }
+
+
+def generate_sector_news(movements, timestamp, api_key):
+    """
+    Generate forex sector news using Hugging Face AI.
+    """
+    topics = [
+        "major currency pair trading activity in forex markets",
+        "emerging market currencies and their recent movements",
+        "safe haven currencies in current market conditions",
+        "commodity-linked currencies and resource prices"
+    ]
+
+    topic = random.choice(topics)
+    prompt = f"Write a brief forex market update about {topic}."
+
+    article = generate_ai_news_with_huggingface(api_key, prompt)
+
+    if not article:
+        article = "Currency pairs showed varying activity as traders assessed economic data. Major currencies continue responding to shifts in monetary policy expectations."
+
+    headline_prompt = f"Write a short, neutral forex news headline about: {topic}"
+    headline = generate_ai_news_with_huggingface(api_key, headline_prompt)
+
+    if not headline or len(headline) > 100:
+        headline = "Forex Markets Show Mixed Trading Patterns"
+
+    return {
+        'headline': headline.strip(),
+        'article': article.strip(),
         'category': 'sector',
         'sentiment': 'neutral'
     }
 
 
-def generate_geopolitical_news(timestamp):
+def generate_geopolitical_news(timestamp, api_key):
     """
-    Generate geopolitical and global event news.
+    Generate geopolitical news using Hugging Face AI.
     """
-    templates = [
-        {
-            'headline': "Trade Tensions Ease as Negotiators Report Progress",
-            'article': "Global markets received a boost from reports of constructive trade negotiations between major economic powers. Diplomats indicated that significant progress had been made on key sticking points, reducing concerns about escalating tariffs.",
-            'category': 'geopolitical',
-            'sentiment': 'positive'
-        },
-        {
-            'headline': "Geopolitical Risks Weigh on Market Sentiment",
-            'article': "Investors remained cautious amid ongoing geopolitical uncertainties. Developments in international relations continued to create headwinds for risk assets, with traders closely monitoring diplomatic channels for signs of resolution.",
-            'category': 'geopolitical',
-            'sentiment': 'negative'
-        },
-        {
-            'headline': "Central Banks Signal Coordinated Policy Response",
-            'article': "Major central banks hinted at coordinated efforts to support economic stability. The collaborative approach eased concerns about fragmented monetary policy responses and provided reassurance to global markets.",
-            'category': 'geopolitical',
-            'sentiment': 'positive'
-        }
+    topics = [
+        "international trade relations and currency impacts",
+        "geopolitical developments affecting global markets",
+        "central bank cooperation and policy coordination",
+        "economic sanctions and their market implications"
     ]
 
-    return random.choice(templates)
+    topic = random.choice(topics)
+    prompt = f"Write a brief neutral financial news update about {topic}."
+
+    article = generate_ai_news_with_huggingface(api_key, prompt)
+
+    if not article:
+        article = "Global markets continue monitoring geopolitical developments. Traders are evaluating how international events may influence currency valuations and trading strategies."
+
+    headline_prompt = f"Write a short, neutral news headline about: {topic}"
+    headline = generate_ai_news_with_huggingface(api_key, headline_prompt)
+
+    if not headline or len(headline) > 100:
+        headline = "Global Events Shape Market Outlook"
+
+    return {
+        'headline': headline.strip(),
+        'article': article.strip(),
+        'category': 'geopolitical',
+        'sentiment': 'neutral'
+    }
 
 
-def generate_economic_data_news(timestamp):
+def generate_economic_data_news(timestamp, api_key):
     """
-    Generate economic data and indicator news.
+    Generate economic data news using Hugging Face AI.
     """
-    templates = [
-        {
-            'headline': "Inflation Data Comes in Below Expectations, Easing Policy Concerns",
-            'article': "The latest inflation reading showed prices rising at a slower pace than economists anticipated. The softer-than-expected data reduced pressure on central banks to maintain aggressive tightening policies, supporting risk assets.",
-            'category': 'economic',
-            'sentiment': 'positive'
-        },
-        {
-            'headline': "Jobs Report Exceeds Forecasts, Signaling Economic Resilience",
-            'article': "Employment figures beat analyst estimates, demonstrating continued strength in the labor market. The robust job creation numbers reinforced views of economic resilience despite recent headwinds.",
-            'category': 'economic',
-            'sentiment': 'positive'
-        },
-        {
-            'headline': "Consumer Confidence Slips as Economic Uncertainty Persists",
-            'article': "Consumer sentiment indicators declined in the latest survey, reflecting growing concerns about economic prospects. The weaker confidence numbers raised questions about future spending patterns and corporate revenue growth.",
-            'category': 'economic',
-            'sentiment': 'negative'
-        },
-        {
-            'headline': "Manufacturing Activity Shows Signs of Stabilization",
-            'article': "The latest manufacturing index suggested industrial activity was stabilizing after months of contraction. While still below expansion territory, the less negative reading provided cautious optimism about supply chain improvements.",
-            'category': 'economic',
-            'sentiment': 'neutral'
-        }
+    topics = [
+        "employment data and labor market conditions",
+        "inflation indicators and price stability",
+        "manufacturing activity and industrial production",
+        "consumer spending patterns and retail trends"
     ]
 
-    return random.choice(templates)
+    topic = random.choice(topics)
+    prompt = f"Write a brief neutral economic news update about {topic}."
+
+    article = generate_ai_news_with_huggingface(api_key, prompt)
+
+    if not article:
+        article = "Economic indicators continue drawing attention from market participants. Analysts are evaluating recent data releases for insights into future economic trends."
+
+    headline_prompt = f"Write a short, neutral news headline about: {topic}"
+    headline = generate_ai_news_with_huggingface(api_key, headline_prompt)
+
+    if not headline or len(headline) > 100:
+        headline = "Economic Data Continues to Guide Markets"
+
+    return {
+        'headline': headline.strip(),
+        'article': article.strip(),
+        'category': 'economic',
+        'sentiment': 'neutral'
+    }
 
 
 def create_asset_specific_news(symbol, past_change_pct, future_change_pct, current_price, sentiment):
@@ -273,33 +299,24 @@ def lambda_handler(event, context):
 
     movements.sort(key=lambda x: x['volatility'], reverse=True)
 
-    # Generate 2-3 diverse news articles (runs every 5 minutes, so fewer articles per run)
+    # Generate 2-3 diverse AI-powered news articles
     news_articles = []
 
     # Randomly select article types to generate variety
-    article_types = ['market', 'sector', 'geopolitical', 'economic', 'asset']
+    article_types = ['market', 'sector', 'geopolitical', 'economic']
     selected_types = random.sample(article_types, k=random.randint(2, 3))
+
+    print(f"Generating {len(selected_types)} AI news articles using Hugging Face...")
 
     for article_type in selected_types:
         if article_type == 'market':
-            news_articles.append(generate_market_wide_news(movements, timestamp))
+            news_articles.append(generate_market_wide_news(movements, timestamp, huggingface_api_key))
         elif article_type == 'sector':
-            news_articles.append(generate_sector_news(movements, timestamp))
+            news_articles.append(generate_sector_news(movements, timestamp, huggingface_api_key))
         elif article_type == 'geopolitical':
-            news_articles.append(generate_geopolitical_news(timestamp))
+            news_articles.append(generate_geopolitical_news(timestamp, huggingface_api_key))
         elif article_type == 'economic':
-            news_articles.append(generate_economic_data_news(timestamp))
-        elif article_type == 'asset' and movements:
-            # Pick a random top mover
-            asset = random.choice(movements[:min(5, len(movements))])
-            sentiment = 'positive' if asset['future_change_percent'] > 0 else 'negative'
-            news_articles.append(create_asset_specific_news(
-                asset['symbol'],
-                asset['past_change_percent'],
-                asset['future_change_percent'],
-                asset['current_price'],
-                sentiment
-            ))
+            news_articles.append(generate_economic_data_news(timestamp, huggingface_api_key))
 
     # All articles are immediately available (publish_at = current time)
     # This provides instant news every 5 minutes instead of staggered releases

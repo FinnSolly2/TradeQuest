@@ -117,9 +117,6 @@ function displayPrices(prices) {
                     <div class="price-change ${changeClass}">
                         ${changeSign}${change.toFixed(2)} (${changeSign}${changePercent.toFixed(2)}%)
                     </div>
-                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">
-                        Hour: ${data.hour_projected_change_percent >= 0 ? '📈' : '📉'} ${data.hour_projected_change_percent >= 0 ? '+' : ''}${data.hour_projected_change_percent.toFixed(1)}% projected
-                    </div>
                 </div>
                 <div class="price-actions">
                     <button class="buy-btn" onclick="openTradeModal('${symbol}', ${data.current})">BUY</button>
@@ -203,18 +200,18 @@ function displayNews(articles) {
         return;
     }
 
+    // Limit to last 5 articles
+    const recentArticles = articles.slice(0, 5);
+
     let html = '';
 
-    articles.forEach(article => {
-        const sentimentClass = article.sentiment === 'positive' ? 'positive' : 'negative';
-        const changeIcon = article.sentiment === 'positive' ? '📈' : '📉';
-
+    recentArticles.forEach(article => {
         // Use publish_at (release time) instead of datetime (generation time)
         const releaseTime = article.publish_at ? new Date(article.publish_at * 1000).toLocaleString() : new Date(article.datetime).toLocaleString();
 
         html += `
-            <div class="news-card ${sentimentClass}">
-                <div class="news-headline">${changeIcon} ${article.headline}</div>
+            <div class="news-card">
+                <div class="news-headline">${article.headline}</div>
                 <div class="news-article">${article.article}</div>
                 <div class="news-meta">
                     <span>${article.symbol}</span>
@@ -268,7 +265,6 @@ function showNewsNotification(article, count) {
         }
     }
 
-    const sentimentIcon = article.sentiment === 'positive' ? '📈' : '📉';
     const countText = count > 1 ? ` (+${count - 1} more)` : '';
 
     notification.innerHTML = `
@@ -276,7 +272,7 @@ function showNewsNotification(article, count) {
             🔔 Breaking News${countText}
         </div>
         <div style="font-size: 16px; margin-bottom: 4px;">
-            ${sentimentIcon} ${article.headline}
+            ${article.headline}
         </div>
         <div style="font-size: 12px; opacity: 0.9;">
             Click to dismiss
