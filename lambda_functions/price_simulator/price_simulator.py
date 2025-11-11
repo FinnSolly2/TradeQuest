@@ -66,7 +66,7 @@ def generate_second_prices(start_price, mean_return, volatility, trend, num_seco
         # Ensure price doesn't go negative
         new_price = max(new_price, start_price * 0.5)
 
-        prices.append(round(new_price, 2))
+        prices.append(round(new_price, 4))
         current_price = new_price
 
     return prices

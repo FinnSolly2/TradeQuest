@@ -113,9 +113,9 @@ function displayPrices(prices) {
             <div class="price-card ${changeClass}">
                 <div class="price-symbol">${symbol}</div>
                 <div class="price-info">
-                    <div class="price-current">$${data.current.toFixed(2)}</div>
+                    <div class="price-current">$${data.current.toFixed(4)}</div>
                     <div class="price-change ${changeClass}">
-                        ${changeSign}${change.toFixed(2)} (${changeSign}${changePercent.toFixed(2)}%)
+                        ${changeSign}${change.toFixed(4)} (${changeSign}${changePercent.toFixed(2)}%)
                     </div>
                 </div>
                 <div class="price-actions">
@@ -149,8 +149,8 @@ function displayPortfolio(positions) {
                 <div class="portfolio-symbol">${position.symbol}</div>
                 <div class="portfolio-details">
                     <div><strong>Quantity:</strong> ${position.quantity}</div>
-                    <div><strong>Avg Price:</strong> $${position.avg_price.toFixed(2)}</div>
-                    <div><strong>Current:</strong> $${position.current_price.toFixed(2)}</div>
+                    <div><strong>Avg Price:</strong> $${position.avg_price.toFixed(4)}</div>
+                    <div><strong>Current:</strong> $${position.current_price.toFixed(4)}</div>
                     <div><strong>Value:</strong> $${position.market_value.toFixed(2)}</div>
                     <div style="color: ${position.profit_loss >= 0 ? '#10b981' : '#ef4444'}">
                         <strong>P/L:</strong> ${plSign}$${position.profit_loss.toFixed(2)} (${plSign}${position.profit_loss_percent.toFixed(2)}%)
@@ -367,7 +367,7 @@ function openTradeModal(symbol, price) {
     selectedAsset = { symbol, price };
 
     document.getElementById('trade-symbol').textContent = symbol;
-    document.getElementById('trade-price').textContent = price.toFixed(2);
+    document.getElementById('trade-price').textContent = price.toFixed(4);
     document.getElementById('trade-available-cash').textContent = currentPortfolio.balance ? currentPortfolio.balance.toFixed(2) : '0.00';
 
     // Find holdings for this symbol
