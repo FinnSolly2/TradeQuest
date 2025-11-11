@@ -6,7 +6,7 @@ let lastNewsCount = 0;  // Track number of news articles for notifications
 
 // Chart state
 let chart = null;
-let candlestickSeries = null;
+let lineSeries = null;
 let priceHistory = {};  // Store historical price data for each asset
 let selectedChartAsset = null;
 let chartTimeframe = 15;  // Default 15 minutes
@@ -569,7 +569,7 @@ function createOrUpdateChart(symbol, timeframeMinutes) {
     if (chart) {
         chart.remove();
         chart = null;
-        candlestickSeries = null;
+        lineSeries = null;
     }
 
     // Clear container
@@ -600,17 +600,25 @@ function createOrUpdateChart(symbol, timeframeMinutes) {
         },
     });
 
-    // Add candlestick series
-    candlestickSeries = chart.addCandlestickSeries({
-        upColor: '#10b981',
-        downColor: '#ef4444',
-        borderUpColor: '#10b981',
-        borderDownColor: '#ef4444',
-        wickUpColor: '#10b981',
-        wickDownColor: '#ef4444',
+    // Add line series
+    lineSeries = chart.addLineSeries({
+        color: '#667eea',
+        lineWidth: 2,
+        crosshairMarkerVisible: true,
+        crosshairMarkerRadius: 6,
+        crosshairMarkerBorderColor: '#667eea',
+        crosshairMarkerBackgroundColor: '#ffffff',
+        lastValueVisible: true,
+        priceLineVisible: true,
     });
 
-    candlestickSeries.setData(candleData);
+    // Convert candlestick data to line data format
+    const lineData = candleData.map(candle => ({
+        time: candle.time,
+        value: candle.close
+    }));
+
+    lineSeries.setData(lineData);
 
     // Fit content
     chart.timeScale().fitContent();
@@ -657,10 +665,15 @@ function aggregateToCandlesticks(tickData, intervalMinutes) {
 
 // Update chart with new price data
 function updateChartData() {
-    if (selectedChartAsset && candlestickSeries && priceHistory[selectedChartAsset]) {
+    if (selectedChartAsset && lineSeries && priceHistory[selectedChartAsset]) {
         const candleData = aggregateToCandlesticks(priceHistory[selectedChartAsset], chartTimeframe);
         if (candleData.length > 0) {
-            candlestickSeries.setData(candleData);
+            // Convert candlestick data to line data format
+            const lineData = candleData.map(candle => ({
+                time: candle.time,
+                value: candle.close
+            }));
+            lineSeries.setData(lineData);
             chart.timeScale().fitContent();
         }
     }
