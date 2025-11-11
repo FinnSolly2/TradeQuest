@@ -574,11 +574,11 @@ resource "aws_lambda_permission" "allow_eventbridge_price_collection" {
   source_arn    = aws_cloudwatch_event_rule.price_collection.arn
 }
 
-# Hourly rule for data fetching and simulation
+# 10-minute rule for price simulation
 resource "aws_cloudwatch_event_rule" "hourly_simulation" {
-  name                = "${var.project_name}-hourly-simulation-${var.environment}"
-  description         = "Trigger simulation pipeline every hour"
-  schedule_expression = var.data_fetch_schedule
+  name                = "${var.project_name}-simulation-${var.environment}"
+  description         = "Trigger simulation pipeline every 10 minutes"
+  schedule_expression = var.simulation_schedule
 }
 
 resource "aws_cloudwatch_event_target" "hourly_simulation_target" {

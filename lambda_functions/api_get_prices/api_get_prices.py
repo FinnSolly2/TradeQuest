@@ -8,22 +8,22 @@ s3_client = boto3.client('s3')
 def lambda_handler(event, context):
     """
     API endpoint to get current second's simulated prices for all assets.
-    Returns the appropriate price from the pre-generated 3600-price batch
-    based on the current second within the hour.
+    Returns the appropriate price from the pre-generated 600-price batch
+    based on the current second within the 10-minute period.
     """
     market_data_bucket = os.environ['MARKET_DATA_BUCKET']
 
     try:
-        # Get latest simulated data (3600 prices per asset)
+        # Get latest simulated data (600 prices per asset, 10-minute period)
         response = s3_client.get_object(
             Bucket=market_data_bucket,
             Key='simulated_data/latest_simulated_1sec.json'
         )
         simulated_data = json.loads(response['Body'].read().decode('utf-8'))
 
-        # Calculate current second within the hour (0-3599)
+        # Calculate current second within the 10-minute period (0-599)
         current_time = datetime.utcnow()
-        current_second = (current_time.minute * 60) + current_time.second  # 0-3599
+        current_second = ((current_time.minute % 10) * 60) + current_time.second  # 0-599
 
         # Build response with current second's prices for all assets
         prices = {}
@@ -44,11 +44,11 @@ def lambda_handler(event, context):
                     'timestamp': second_data['timestamp'],
                     'datetime': second_data['datetime'],
                     'second': second_data['second'],
-                    'hour_high': asset_data['hour_high'],
-                    'hour_low': asset_data['hour_low'],
+                    'period_high': asset_data.get('period_high', asset_data.get('hour_high')),
+                    'period_low': asset_data.get('period_low', asset_data.get('hour_low')),
                     'hour_start': asset_data['start_price'],
                     'hour_projected_end': asset_data['end_price'],
-                    'hour_projected_change_percent': asset_data['hour_change_percent']
+                    'period_change_percent': asset_data.get('period_change_percent', asset_data.get('hour_change_percent'))
                 }
             else:
                 # Fallback to last available price if current second is out of range
@@ -58,11 +58,11 @@ def lambda_handler(event, context):
                     'timestamp': second_data['timestamp'],
                     'datetime': second_data['datetime'],
                     'second': second_data['second'],
-                    'hour_high': asset_data['hour_high'],
-                    'hour_low': asset_data['hour_low'],
+                    'period_high': asset_data.get('period_high', asset_data.get('hour_high')),
+                    'period_low': asset_data.get('period_low', asset_data.get('hour_low')),
                     'hour_start': asset_data['start_price'],
                     'hour_projected_end': asset_data['end_price'],
-                    'hour_projected_change_percent': asset_data['hour_change_percent'],
+                    'period_change_percent': asset_data.get('period_change_percent', asset_data.get('hour_change_percent')),
                     'note': 'Using last available second (simulation may be outdated)'
                 }
 

@@ -73,10 +73,10 @@ def lambda_handler(event, context):
             )
             simulated_data = json.loads(response['Body'].read().decode('utf-8'))
 
-            # Calculate current second within the hour (0-3599)
+            # Calculate current second within the 10-minute period (0-599)
             from datetime import datetime
             current_time = datetime.utcnow()
-            current_second = (current_time.minute * 60) + current_time.second  # 0-3599
+            current_second = ((current_time.minute % 10) * 60) + current_time.second  # 0-599
 
             if symbol not in simulated_data['assets'] or simulated_data['assets'][symbol] is None:
                 return error_response(404, f'Symbol {symbol} not found or unavailable')

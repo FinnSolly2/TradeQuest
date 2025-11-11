@@ -10,8 +10,8 @@ s3_client = boto3.client('s3')
 def lambda_handler(event, context):
     """
     Collects current prices using Yahoo Finance query API every minute.
-    Maintains a rolling 60-minute (1 hour) history for each asset.
-    This data is used by price_simulator to generate 3600 simulated prices (1 per second).
+    Maintains a rolling 60-minute (1 hour) history for each asset (60 datapoints x 1min).
+    This data is used by price_simulator to generate 600 simulated prices (1 per second for 10 min).
     """
     market_data_bucket = os.environ['MARKET_DATA_BUCKET']
     assets_to_track = json.loads(os.environ['ASSETS_TO_TRACK'])
@@ -81,7 +81,7 @@ def lambda_handler(event, context):
 
                     history_data['assets'][symbol]['data_points'].append(data_point)
 
-                    # Keep only last 60 data points (60 minutes = 1 hour)
+                    # Keep only last 60 data points (60 x 1min = 60 minutes = 1 hour)
                     if len(history_data['assets'][symbol]['data_points']) > 60:
                         history_data['assets'][symbol]['data_points'] = \
                             history_data['assets'][symbol]['data_points'][-60:]

@@ -38,16 +38,16 @@ def calculate_statistics(candles):
     return mean_return, volatility, trend
 
 
-def generate_second_prices(start_price, mean_return, volatility, trend, num_seconds=3600):
+def generate_second_prices(start_price, mean_return, volatility, trend, num_seconds=600):
     """
-    Generate simulated prices for the next hour using GBM with historical statistics.
-    Returns list of 3600 prices (one per second).
+    Generate simulated prices for the next 10 minutes using GBM with historical statistics.
+    Returns list of 600 prices (one per second).
     """
     prices = []
     current_price = start_price
 
     # Adjust drift to include trend component
-    drift = mean_return + (trend / num_seconds)  # Distribute trend over the hour
+    drift = mean_return + (trend / num_seconds)  # Distribute trend over the 10-minute period
 
     for second in range(num_seconds):
         # Geometric Brownian Motion
@@ -74,8 +74,8 @@ def generate_second_prices(start_price, mean_return, volatility, trend, num_seco
 
 def lambda_handler(event, context):
     """
-    Generates 3600 simulated prices (1 per second) for the NEXT hour
-    based on statistical distribution from the PAST hour's collected price data.
+    Generates 600 simulated prices (1 per second) for the NEXT 10 minutes
+    based on statistical distribution from the PAST 60 minutes collected price data.
     """
     market_data_bucket = os.environ['MARKET_DATA_BUCKET']
 
@@ -99,7 +99,7 @@ def lambda_handler(event, context):
         print(f"Error loading price history: {str(e)}")
         raise
 
-    # Start time for the simulated hour (current time, rounded to the second)
+    # Start time for the simulated 10-minute period (current time, rounded to the second)
     current_dt = datetime.utcnow()
     start_timestamp = int(current_dt.replace(microsecond=0).timestamp())
 
@@ -107,7 +107,7 @@ def lambda_handler(event, context):
         'timestamp': timestamp,
         'datetime': current_dt.isoformat(),
         'start_timestamp': start_timestamp,
-        'end_timestamp': start_timestamp + 3600,
+        'end_timestamp': start_timestamp + 600,
         'resolution': '1sec',
         'assets': {}
     }
@@ -136,13 +136,14 @@ def lambda_handler(event, context):
 
             print(f"📊 {symbol}: mean_return={mean_return:.6f}, volatility={volatility:.4f}, trend={trend:+.2%}")
 
-            # Generate 3600 simulated prices for next hour
+            # Generate 600 simulated prices for next 10 minutes
             random.seed(int(timestamp) + hash(symbol) % 10000)
             simulated_prices = generate_second_prices(
                 start_price=last_price,
                 mean_return=mean_return,
                 volatility=volatility * 2,  # Amplify for more interesting simulation
-                trend=trend
+                trend=trend,
+                num_seconds=600
             )
 
             # Create timestamped price data
@@ -156,16 +157,16 @@ def lambda_handler(event, context):
                     'price': price
                 })
 
-            # Calculate summary statistics for the simulated hour
+            # Calculate summary statistics for the simulated 10-minute period
             simulated_data['assets'][symbol] = {
                 'seconds': second_data,
                 'count': len(second_data),
                 'start_price': simulated_prices[0],
                 'end_price': simulated_prices[-1],
-                'hour_high': max(simulated_prices),
-                'hour_low': min(simulated_prices),
-                'hour_change': simulated_prices[-1] - simulated_prices[0],
-                'hour_change_percent': ((simulated_prices[-1] - simulated_prices[0]) / simulated_prices[0] * 100),
+                'period_high': max(simulated_prices),
+                'period_low': min(simulated_prices),
+                'period_change': simulated_prices[-1] - simulated_prices[0],
+                'period_change_percent': ((simulated_prices[-1] - simulated_prices[0]) / simulated_prices[0] * 100),
                 'based_on': {
                     'historical_mean_return': mean_return,
                     'historical_volatility': volatility,
@@ -174,8 +175,8 @@ def lambda_handler(event, context):
                 }
             }
 
-            change_pct = simulated_data['assets'][symbol]['hour_change_percent']
-            print(f"✓ {symbol}: Generated 3600 prices, ${simulated_prices[0]:.2f} → ${simulated_prices[-1]:.2f} ({change_pct:+.2f}%)")
+            change_pct = simulated_data['assets'][symbol]['period_change_percent']
+            print(f"✓ {symbol}: Generated 600 prices, ${simulated_prices[0]:.2f} → ${simulated_prices[-1]:.2f} ({change_pct:+.2f}%)")
 
         except Exception as e:
             print(f"Error simulating {symbol}: {str(e)}")
@@ -216,6 +217,6 @@ def lambda_handler(event, context):
             's3_key': s3_key,
             'assets_simulated': len([a for a in simulated_data['assets'].values() if a is not None]),
             'timestamp': timestamp,
-            'simulation_period': f"{datetime.fromtimestamp(start_timestamp).strftime('%H:%M')} - {datetime.fromtimestamp(start_timestamp + 3600).strftime('%H:%M')}"
+            'simulation_period': f"{datetime.fromtimestamp(start_timestamp).strftime('%H:%M')} - {datetime.fromtimestamp(start_timestamp + 600).strftime('%H:%M')}"
         })
     }

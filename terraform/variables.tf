@@ -51,9 +51,15 @@ variable "initial_balance" {
 }
 
 variable "data_fetch_schedule" {
-  description = "Cron expression for data fetching (default: every hour)"
+  description = "Cron expression for data fetching (default: every minute)"
   type        = string
-  default     = "cron(0 * * * ? *)"
+  default     = "cron(* * * * ? *)"
+}
+
+variable "simulation_schedule" {
+  description = "Cron expression for price simulation (default: every 10 minutes)"
+  type        = string
+  default     = "cron(*/10 * * * ? *)"
 }
 
 variable "news_release_schedule" {
