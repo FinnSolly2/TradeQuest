@@ -14,26 +14,19 @@ def generate_ai_news_with_huggingface(api_key, prompt):
     Uses Llama 3.2 1B Instruct model for fast, quality text generation.
     """
     try:
-        # Initialize client with API key
+        # Initialize client with API key (same as your working local code)
         client = InferenceClient(token=api_key)
 
-        # Create chat messages
+        # Create chat messages - system prompt + user prompt for better quality
         messages = [
-            {
-                "role": "system",
-                "content": "You are a professional financial news writer. Write brief, neutral news articles (2-3 sentences) without specific numbers or percentages. Keep it factual and balanced."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "user", "content": f"Write a brief, neutral financial news article (2-3 sentences) about: {prompt}. Do not include specific numbers or percentages."}
         ]
 
         # Generate text using chat completion
         response = client.chat_completion(
             messages=messages,
             model="meta-llama/Llama-3.2-1B-Instruct",
-            max_tokens=120,
+            max_tokens=100,
             temperature=0.7
         )
 
