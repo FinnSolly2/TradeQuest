@@ -587,22 +587,22 @@ resource "aws_cloudwatch_event_target" "hourly_simulation_target" {
   role_arn = aws_iam_role.eventbridge_role.arn
 }
 
-# 15-minute rule for news release (with session check)
+# 5-minute rule for news generation
 resource "aws_cloudwatch_event_rule" "news_release" {
   name                = "${var.project_name}-news-release-${var.environment}"
-  description         = "Check for active sessions and release news every 15 minutes"
+  description         = "Generate news every 5 minutes"
   schedule_expression = var.news_release_schedule
 }
 
 resource "aws_cloudwatch_event_target" "news_release_target" {
   rule     = aws_cloudwatch_event_rule.news_release.name
-  arn      = aws_lambda_function.session_checker.arn
+  arn      = aws_lambda_function.news_generator.arn
 }
 
 resource "aws_lambda_permission" "allow_eventbridge_news" {
   statement_id  = "AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.session_checker.function_name
+  function_name = aws_lambda_function.news_generator.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.news_release.arn
 }
