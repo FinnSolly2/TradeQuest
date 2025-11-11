@@ -1,50 +1,52 @@
 import json
 import os
 import boto3
-import requests
 from datetime import datetime
 import time
 import random
+from huggingface_hub import InferenceClient
 
 s3_client = boto3.client('s3')
 
 def generate_ai_news_with_huggingface(api_key, prompt):
     """
-    Generate AI news using Hugging Face API.
-    Uses a small, fast model for text generation.
+    Generate AI news using Hugging Face InferenceClient.
+    Uses Llama 3.2 1B Instruct model for fast, quality text generation.
     """
-    api_url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-    headers = {"Authorization": f"Bearer {api_key}"}
-
-    # Format prompt for instruction-following model
-    formatted_prompt = f"""<s>[INST] {prompt}
-
-Write a neutral, professional financial news article (2-3 sentences) without numbers or percentages. Keep it factual and balanced. [/INST]"""
-
-    payload = {
-        "inputs": formatted_prompt,
-        "parameters": {
-            "max_new_tokens": 150,
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "do_sample": True
-        }
-    }
-
     try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
+        # Initialize client with API key
+        client = InferenceClient(token=api_key)
 
-        if isinstance(result, list) and len(result) > 0:
-            generated_text = result[0].get('generated_text', '')
-            # Extract only the response after [/INST]
-            if '[/INST]' in generated_text:
-                generated_text = generated_text.split('[/INST]')[-1].strip()
-            return generated_text
-        else:
-            print(f"Unexpected API response format: {result}")
-            return None
+        # Create chat messages
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a professional financial news writer. Write brief, neutral news articles (2-3 sentences) without specific numbers or percentages. Keep it factual and balanced."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+
+        # Generate text using chat completion
+        response = client.chat_completion(
+            messages=messages,
+            model="meta-llama/Llama-3.2-1B-Instruct",
+            max_tokens=120,
+            temperature=0.7
+        )
+
+        generated_text = response.choices[0].message.content.strip()
+
+        # Clean up - ensure it's concise (2-3 sentences)
+        sentences = generated_text.split('.')[:3]
+        clean_text = '. '.join(s.strip() for s in sentences if s.strip())
+        if clean_text and not clean_text.endswith('.'):
+            clean_text += '.'
+
+        return clean_text if clean_text else None
+
     except Exception as e:
         print(f"Error calling Hugging Face API: {str(e)}")
         return None
