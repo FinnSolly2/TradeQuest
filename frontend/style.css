@@ -545,3 +545,74 @@ section h2 {
     transform: translateY(-2px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
+
+/* Charts Section */
+.charts-section {
+    margin-bottom: 20px;
+}
+
+.charts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.chart-selector {
+    padding: 8px 12px;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    font-size: 0.95em;
+    font-weight: 500;
+    color: #333;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.chart-selector:hover {
+    border-color: #5568d3;
+    background: #f9f9f9;
+}
+
+.chart-selector:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.chart-container {
+    background: #fafafa;
+    border-radius: 8px;
+    min-height: 500px;
+    overflow: hidden;
+    border: 1px solid #e1e4e8;
+}
+
+@media (max-width: 968px) {
+    .charts-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .chart-controls {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .chart-selector {
+        width: 100%;
+    }
+
+    .chart-container {
+        min-height: 400px;
+    }
+}
