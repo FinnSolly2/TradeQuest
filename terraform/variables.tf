@@ -40,11 +40,7 @@ variable "assets_to_track" {
     "USDJPY=X",
     "AUDUSD=X",
     "USDCAD=X",
-    "USDCHF=X",
-    "NZDUSD=X",
-    "EURGBP=X",
-    "EURJPY=X",
-    "GBPJPY=X"
+    "EURJPY=X"
   ]
 }
 
