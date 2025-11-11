@@ -49,19 +49,44 @@ def generate_market_wide_news(movements, timestamp, api_key):
     """
     Generate market-wide news using Hugging Face AI, connected to a specific asset prediction.
     """
+    # Currency pair mappings for better context
+    currency_info = {
+        'EURUSD=X': ('Euro', 'US Dollar', 'European Central Bank', 'Federal Reserve'),
+        'GBPUSD=X': ('British Pound', 'US Dollar', 'Bank of England', 'Federal Reserve'),
+        'USDJPY=X': ('US Dollar', 'Japanese Yen', 'Federal Reserve', 'Bank of Japan'),
+        'AUDUSD=X': ('Australian Dollar', 'US Dollar', 'Reserve Bank of Australia', 'Federal Reserve'),
+        'USDCAD=X': ('US Dollar', 'Canadian Dollar', 'Federal Reserve', 'Bank of Canada'),
+        'EURJPY=X': ('Euro', 'Japanese Yen', 'European Central Bank', 'Bank of Japan')
+    }
+
     # Pick a random asset to feature in the news
     if movements:
         featured_asset = random.choice(movements)
         symbol = featured_asset['symbol']
         predicted_change = featured_asset['future_change_percent']
-        direction = "strengthen" if predicted_change > 0 else "weaken"
 
-        topics = [
-            f"central bank monetary policy developments that could cause {symbol} to {direction}",
-            f"global economic factors influencing {symbol} exchange rate expectations",
-            f"market developments suggesting {symbol} may {direction} in coming sessions",
-            f"economic indicators pointing to potential {direction}ing of {symbol}"
-        ]
+        if symbol in currency_info:
+            base_curr, quote_curr, base_bank, quote_bank = currency_info[symbol]
+
+            if predicted_change > 0:
+                topics = [
+                    f"how {base_bank} policy decisions could strengthen the {base_curr} against the {quote_curr}",
+                    f"economic factors that may boost the {base_curr} relative to the {quote_curr}",
+                    f"why market analysts expect the {base_curr} to gain ground against the {quote_curr}",
+                    f"developments suggesting upward momentum for the {base_curr} versus the {quote_curr}"
+                ]
+            else:
+                topics = [
+                    f"how {quote_bank} policy decisions could strengthen the {quote_curr} against the {base_curr}",
+                    f"economic factors that may weaken the {base_curr} relative to the {quote_curr}",
+                    f"why market analysts expect the {base_curr} to lose ground against the {quote_curr}",
+                    f"developments suggesting downward pressure on the {base_curr} versus the {quote_curr}"
+                ]
+        else:
+            topics = [
+                "central bank monetary policy and its impact on currency markets",
+                "global economic growth trends affecting forex trading"
+            ]
     else:
         topics = [
             "central bank monetary policy and its impact on currency markets",
@@ -96,20 +121,38 @@ def generate_sector_news(movements, timestamp, api_key):
     """
     Generate forex sector news using Hugging Face AI, connected to a specific asset prediction.
     """
+    # Currency pair mappings
+    currency_info = {
+        'EURUSD=X': ('EUR/USD', 'Euro', 'US Dollar'),
+        'GBPUSD=X': ('GBP/USD', 'British Pound', 'US Dollar'),
+        'USDJPY=X': ('USD/JPY', 'US Dollar', 'Japanese Yen'),
+        'AUDUSD=X': ('AUD/USD', 'Australian Dollar', 'US Dollar'),
+        'USDCAD=X': ('USD/CAD', 'US Dollar', 'Canadian Dollar'),
+        'EURJPY=X': ('EUR/JPY', 'Euro', 'Japanese Yen')
+    }
+
     # Pick a random asset to feature in the news
     if movements:
         featured_asset = random.choice(movements)
         symbol = featured_asset['symbol']
         predicted_change = featured_asset['future_change_percent']
-        direction = "rise" if predicted_change > 0 else "decline"
-        trend = "bullish" if predicted_change > 0 else "bearish"
 
-        topics = [
-            f"{symbol} showing {trend} signals as traders position for potential {direction}",
-            f"market participants watching {symbol} closely amid expectations of {direction}",
-            f"technical factors suggesting {symbol} could {direction} in near term",
-            f"trading patterns indicate {symbol} may experience {direction} in upcoming period"
-        ]
+        if symbol in currency_info:
+            pair_name, base_curr, quote_curr = currency_info[symbol]
+            trend = "bullish" if predicted_change > 0 else "bearish"
+            direction = "rise" if predicted_change > 0 else "decline"
+
+            topics = [
+                f"why {pair_name} is showing {trend} signals as the {base_curr} prepares to {direction} against the {quote_curr}",
+                f"technical factors suggesting the {base_curr} could {direction} versus the {quote_curr}",
+                f"market sentiment turning {trend} on {pair_name} as traders anticipate {base_curr} movement",
+                f"trading patterns in {pair_name} indicating potential {direction} in the {base_curr}"
+            ]
+        else:
+            topics = [
+                "major currency pair trading activity in forex markets",
+                "emerging market currencies and their recent movements"
+            ]
     else:
         topics = [
             "major currency pair trading activity in forex markets",
@@ -142,19 +185,37 @@ def generate_geopolitical_news(movements, timestamp, api_key):
     """
     Generate geopolitical news using Hugging Face AI, connected to a specific asset prediction.
     """
+    # Currency pair mappings
+    currency_info = {
+        'EURUSD=X': ('EUR/USD', 'Euro', 'US Dollar', 'Eurozone', 'United States'),
+        'GBPUSD=X': ('GBP/USD', 'British Pound', 'US Dollar', 'United Kingdom', 'United States'),
+        'USDJPY=X': ('USD/JPY', 'US Dollar', 'Japanese Yen', 'United States', 'Japan'),
+        'AUDUSD=X': ('AUD/USD', 'Australian Dollar', 'US Dollar', 'Australia', 'United States'),
+        'USDCAD=X': ('USD/CAD', 'US Dollar', 'Canadian Dollar', 'United States', 'Canada'),
+        'EURJPY=X': ('EUR/JPY', 'Euro', 'Japanese Yen', 'Eurozone', 'Japan')
+    }
+
     # Pick a random asset to feature in the news
     if movements:
         featured_asset = random.choice(movements)
         symbol = featured_asset['symbol']
         predicted_change = featured_asset['future_change_percent']
-        impact = "support" if predicted_change > 0 else "pressure"
 
-        topics = [
-            f"international trade developments that may {impact} {symbol}",
-            f"geopolitical events potentially impacting {symbol} valuations",
-            f"diplomatic developments with implications for {symbol}",
-            f"global tensions creating {impact} on {symbol} exchange rates"
-        ]
+        if symbol in currency_info:
+            pair_name, base_curr, quote_curr, base_region, quote_region = currency_info[symbol]
+            impact = "support" if predicted_change > 0 else "pressure"
+
+            topics = [
+                f"how trade relations between {base_region} and {quote_region} could {impact} the {base_curr} versus the {quote_curr}",
+                f"geopolitical developments in {base_region} that may impact the {base_curr} against the {quote_curr}",
+                f"diplomatic tensions affecting the {base_curr}/{quote_curr} exchange rate",
+                f"international events creating {impact} on {pair_name}"
+            ]
+        else:
+            topics = [
+                "international trade relations and currency impacts",
+                "geopolitical developments affecting global markets"
+            ]
     else:
         topics = [
             "international trade relations and currency impacts",
@@ -187,19 +248,37 @@ def generate_economic_data_news(movements, timestamp, api_key):
     """
     Generate economic data news using Hugging Face AI, connected to a specific asset prediction.
     """
+    # Currency pair mappings
+    currency_info = {
+        'EURUSD=X': ('EUR/USD', 'Euro', 'US Dollar', 'Eurozone', 'US'),
+        'GBPUSD=X': ('GBP/USD', 'British Pound', 'US Dollar', 'UK', 'US'),
+        'USDJPY=X': ('USD/JPY', 'US Dollar', 'Japanese Yen', 'US', 'Japanese'),
+        'AUDUSD=X': ('AUD/USD', 'Australian Dollar', 'US Dollar', 'Australian', 'US'),
+        'USDCAD=X': ('USD/CAD', 'US Dollar', 'Canadian Dollar', 'US', 'Canadian'),
+        'EURJPY=X': ('EUR/JPY', 'Euro', 'Japanese Yen', 'Eurozone', 'Japanese')
+    }
+
     # Pick a random asset to feature in the news
     if movements:
         featured_asset = random.choice(movements)
         symbol = featured_asset['symbol']
         predicted_change = featured_asset['future_change_percent']
-        effect = "boost" if predicted_change > 0 else "weigh on"
 
-        topics = [
-            f"employment data releases that could {effect} {symbol}",
-            f"inflation indicators with potential to impact {symbol}",
-            f"economic data suggesting movement in {symbol}",
-            f"growth figures that may influence {symbol} trading"
-        ]
+        if symbol in currency_info:
+            pair_name, base_curr, quote_curr, base_econ, quote_econ = currency_info[symbol]
+            effect = "boost" if predicted_change > 0 else "weigh on"
+
+            topics = [
+                f"how {base_econ} employment data could {effect} the {base_curr} against the {quote_curr}",
+                f"{base_econ} inflation indicators that may impact the {base_curr} versus the {quote_curr}",
+                f"economic growth figures from {base_econ} affecting {pair_name}",
+                f"{base_econ} data releases with potential to move the {base_curr} relative to the {quote_curr}"
+            ]
+        else:
+            topics = [
+                "employment data and labor market conditions",
+                "inflation indicators and price stability"
+            ]
     else:
         topics = [
             "employment data and labor market conditions",
