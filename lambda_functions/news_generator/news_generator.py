@@ -47,17 +47,29 @@ def generate_ai_news_with_huggingface(api_key, prompt):
 
 def generate_market_wide_news(movements, timestamp, api_key):
     """
-    Generate market-wide news using Hugging Face AI.
+    Generate market-wide news using Hugging Face AI, connected to a specific asset prediction.
     """
-    topics = [
-        "central bank monetary policy and its impact on currency markets",
-        "global economic growth trends affecting forex trading",
-        "international trade developments and currency valuations",
-        "inflation concerns and their effect on major currencies"
-    ]
+    # Pick a random asset to feature in the news
+    if movements:
+        featured_asset = random.choice(movements)
+        symbol = featured_asset['symbol']
+        predicted_change = featured_asset['future_change_percent']
+        direction = "strengthen" if predicted_change > 0 else "weaken"
+
+        topics = [
+            f"central bank monetary policy developments that could cause {symbol} to {direction}",
+            f"global economic factors influencing {symbol} exchange rate expectations",
+            f"market developments suggesting {symbol} may {direction} in coming sessions",
+            f"economic indicators pointing to potential {direction}ing of {symbol}"
+        ]
+    else:
+        topics = [
+            "central bank monetary policy and its impact on currency markets",
+            "global economic growth trends affecting forex trading"
+        ]
 
     topic = random.choice(topics)
-    prompt = f"Write a brief financial news update about {topic}."
+    prompt = f"Write a brief, neutral financial news article (2-3 sentences) about {topic}. Do not include specific numbers or percentages."
 
     article = generate_ai_news_with_huggingface(api_key, prompt)
 
@@ -82,24 +94,37 @@ def generate_market_wide_news(movements, timestamp, api_key):
 
 def generate_sector_news(movements, timestamp, api_key):
     """
-    Generate forex sector news using Hugging Face AI.
+    Generate forex sector news using Hugging Face AI, connected to a specific asset prediction.
     """
-    topics = [
-        "major currency pair trading activity in forex markets",
-        "emerging market currencies and their recent movements",
-        "safe haven currencies in current market conditions",
-        "commodity-linked currencies and resource prices"
-    ]
+    # Pick a random asset to feature in the news
+    if movements:
+        featured_asset = random.choice(movements)
+        symbol = featured_asset['symbol']
+        predicted_change = featured_asset['future_change_percent']
+        direction = "rise" if predicted_change > 0 else "decline"
+        trend = "bullish" if predicted_change > 0 else "bearish"
+
+        topics = [
+            f"{symbol} showing {trend} signals as traders position for potential {direction}",
+            f"market participants watching {symbol} closely amid expectations of {direction}",
+            f"technical factors suggesting {symbol} could {direction} in near term",
+            f"trading patterns indicate {symbol} may experience {direction} in upcoming period"
+        ]
+    else:
+        topics = [
+            "major currency pair trading activity in forex markets",
+            "emerging market currencies and their recent movements"
+        ]
 
     topic = random.choice(topics)
-    prompt = f"Write a brief forex market update about {topic}."
+    prompt = f"Write a brief, neutral forex market update (2-3 sentences) about {topic}. Do not include specific numbers or percentages."
 
     article = generate_ai_news_with_huggingface(api_key, prompt)
 
     if not article:
         article = "Currency pairs showed varying activity as traders assessed economic data. Major currencies continue responding to shifts in monetary policy expectations."
 
-    headline_prompt = f"Write a short, neutral forex news headline about: {topic}"
+    headline_prompt = f"Write a short, neutral forex news headline (max 10 words) about: {topic}"
     headline = generate_ai_news_with_huggingface(api_key, headline_prompt)
 
     if not headline or len(headline) > 100:
@@ -113,26 +138,38 @@ def generate_sector_news(movements, timestamp, api_key):
     }
 
 
-def generate_geopolitical_news(timestamp, api_key):
+def generate_geopolitical_news(movements, timestamp, api_key):
     """
-    Generate geopolitical news using Hugging Face AI.
+    Generate geopolitical news using Hugging Face AI, connected to a specific asset prediction.
     """
-    topics = [
-        "international trade relations and currency impacts",
-        "geopolitical developments affecting global markets",
-        "central bank cooperation and policy coordination",
-        "economic sanctions and their market implications"
-    ]
+    # Pick a random asset to feature in the news
+    if movements:
+        featured_asset = random.choice(movements)
+        symbol = featured_asset['symbol']
+        predicted_change = featured_asset['future_change_percent']
+        impact = "support" if predicted_change > 0 else "pressure"
+
+        topics = [
+            f"international trade developments that may {impact} {symbol}",
+            f"geopolitical events potentially impacting {symbol} valuations",
+            f"diplomatic developments with implications for {symbol}",
+            f"global tensions creating {impact} on {symbol} exchange rates"
+        ]
+    else:
+        topics = [
+            "international trade relations and currency impacts",
+            "geopolitical developments affecting global markets"
+        ]
 
     topic = random.choice(topics)
-    prompt = f"Write a brief neutral financial news update about {topic}."
+    prompt = f"Write a brief, neutral financial news update (2-3 sentences) about {topic}. Do not include specific numbers or percentages."
 
     article = generate_ai_news_with_huggingface(api_key, prompt)
 
     if not article:
         article = "Global markets continue monitoring geopolitical developments. Traders are evaluating how international events may influence currency valuations and trading strategies."
 
-    headline_prompt = f"Write a short, neutral news headline about: {topic}"
+    headline_prompt = f"Write a short, neutral news headline (max 10 words) about: {topic}"
     headline = generate_ai_news_with_huggingface(api_key, headline_prompt)
 
     if not headline or len(headline) > 100:
@@ -146,26 +183,38 @@ def generate_geopolitical_news(timestamp, api_key):
     }
 
 
-def generate_economic_data_news(timestamp, api_key):
+def generate_economic_data_news(movements, timestamp, api_key):
     """
-    Generate economic data news using Hugging Face AI.
+    Generate economic data news using Hugging Face AI, connected to a specific asset prediction.
     """
-    topics = [
-        "employment data and labor market conditions",
-        "inflation indicators and price stability",
-        "manufacturing activity and industrial production",
-        "consumer spending patterns and retail trends"
-    ]
+    # Pick a random asset to feature in the news
+    if movements:
+        featured_asset = random.choice(movements)
+        symbol = featured_asset['symbol']
+        predicted_change = featured_asset['future_change_percent']
+        effect = "boost" if predicted_change > 0 else "weigh on"
+
+        topics = [
+            f"employment data releases that could {effect} {symbol}",
+            f"inflation indicators with potential to impact {symbol}",
+            f"economic data suggesting movement in {symbol}",
+            f"growth figures that may influence {symbol} trading"
+        ]
+    else:
+        topics = [
+            "employment data and labor market conditions",
+            "inflation indicators and price stability"
+        ]
 
     topic = random.choice(topics)
-    prompt = f"Write a brief neutral economic news update about {topic}."
+    prompt = f"Write a brief, neutral economic news update (2-3 sentences) about {topic}. Do not include specific numbers or percentages."
 
     article = generate_ai_news_with_huggingface(api_key, prompt)
 
     if not article:
         article = "Economic indicators continue drawing attention from market participants. Analysts are evaluating recent data releases for insights into future economic trends."
 
-    headline_prompt = f"Write a short, neutral news headline about: {topic}"
+    headline_prompt = f"Write a short, neutral news headline (max 10 words) about: {topic}"
     headline = generate_ai_news_with_huggingface(api_key, headline_prompt)
 
     if not headline or len(headline) > 100:
@@ -281,7 +330,7 @@ def lambda_handler(event, context):
             else:
                 past_change_pct = 0
 
-            future_change_pct = simulated_info.get('hour_change_percent', 0)
+            future_change_pct = simulated_info.get('period_change_percent', simulated_info.get('hour_change_percent', 0))
             current_price = simulated_info.get('start_price', 0)
 
             movements.append({
@@ -309,9 +358,9 @@ def lambda_handler(event, context):
         elif article_type == 'sector':
             news_articles.append(generate_sector_news(movements, timestamp, huggingface_api_key))
         elif article_type == 'geopolitical':
-            news_articles.append(generate_geopolitical_news(timestamp, huggingface_api_key))
+            news_articles.append(generate_geopolitical_news(movements, timestamp, huggingface_api_key))
         elif article_type == 'economic':
-            news_articles.append(generate_economic_data_news(timestamp, huggingface_api_key))
+            news_articles.append(generate_economic_data_news(movements, timestamp, huggingface_api_key))
 
     # All articles are immediately available (publish_at = current time)
     # This provides instant news every 5 minutes instead of staggered releases
