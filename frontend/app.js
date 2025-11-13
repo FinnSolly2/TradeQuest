@@ -4,13 +4,6 @@ let currentPortfolio = {};
 let selectedAsset = null;
 let lastNewsCount = 0;  // Track number of news articles for notifications
 
-// Chart state
-let chart = null;
-let lineSeries = null;
-let priceHistory = {};  // Store historical price data for each asset
-let selectedChartAsset = null;
-let chartTimeframe = 15;  // Default 15 minutes
-
 // Initialize on page load
 window.onload = function() {
     // Auth manager will handle initialization and call loadUserData if authenticated
@@ -18,9 +11,6 @@ window.onload = function() {
     refreshPrices();
     refreshNews();
     refreshLeaderboard();
-
-    // Initialize chart controls
-    initializeChartControls();
 
     // Auto-refresh prices every second (prices change second-by-second)
     setInterval(refreshPrices, 1000);
@@ -106,15 +96,6 @@ function displayPrices(prices) {
         container.innerHTML = '<p>No price data available</p>';
         return;
     }
-
-    // Update chart asset selector with current prices
-    updateChartAssetSelector(prices);
-
-    // Store price data for charting
-    storePriceData(prices);
-
-    // Update chart if one is displayed
-    updateChartData();
 
     let html = '';
 
@@ -476,205 +457,5 @@ window.onclick = function(event) {
     const modal = document.getElementById('trade-modal');
     if (event.target == modal) {
         closeTradeModal();
-    }
-}
-
-// ========== CHART FUNCTIONS ==========
-
-// Initialize chart controls
-function initializeChartControls() {
-    const assetSelector = document.getElementById('chart-asset-selector');
-    const timeframeSelector = document.getElementById('chart-timeframe-selector');
-
-    assetSelector.addEventListener('change', (e) => {
-        selectedChartAsset = e.target.value;
-        if (selectedChartAsset) {
-            createOrUpdateChart(selectedChartAsset, chartTimeframe);
-        }
-    });
-
-    timeframeSelector.addEventListener('change', (e) => {
-        chartTimeframe = parseInt(e.target.value);
-        if (selectedChartAsset) {
-            createOrUpdateChart(selectedChartAsset, chartTimeframe);
-        }
-    });
-}
-
-// Update asset selector when prices are loaded
-function updateChartAssetSelector(prices) {
-    const selector = document.getElementById('chart-asset-selector');
-    const currentValue = selector.value;
-
-    // Build options HTML
-    let optionsHtml = '<option value="">Select an asset...</option>';
-    for (const symbol of Object.keys(prices)) {
-        optionsHtml += `<option value="${symbol}">${symbol}</option>`;
-    }
-
-    selector.innerHTML = optionsHtml;
-
-    // Restore previous selection if it still exists
-    if (currentValue && prices[currentValue]) {
-        selector.value = currentValue;
-    }
-}
-
-// Store price data for charting
-function storePriceData(prices) {
-    const timestamp = Math.floor(Date.now() / 1000);
-
-    for (const [symbol, data] of Object.entries(prices)) {
-        if (!data || !data.current) continue;
-
-        // Initialize history array if needed
-        if (!priceHistory[symbol]) {
-            priceHistory[symbol] = [];
-        }
-
-        // Add new price point
-        priceHistory[symbol].push({
-            time: timestamp,
-            open: data.current,
-            high: data.current,
-            low: data.current,
-            close: data.current
-        });
-
-        // Keep only last 1000 data points to prevent memory issues
-        if (priceHistory[symbol].length > 1000) {
-            priceHistory[symbol].shift();
-        }
-    }
-}
-
-// Create or update chart
-function createOrUpdateChart(symbol, timeframeMinutes) {
-    const container = document.getElementById('chart-container');
-
-    if (!priceHistory[symbol] || priceHistory[symbol].length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">Loading chart data... (this may take a few moments)</p>';
-        return;
-    }
-
-    // Aggregate data into candlesticks based on timeframe
-    const candleData = aggregateToCandlesticks(priceHistory[symbol], timeframeMinutes);
-
-    if (candleData.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">Not enough data yet. Please wait...</p>';
-        return;
-    }
-
-    // Destroy existing chart if it exists
-    if (chart) {
-        chart.remove();
-        chart = null;
-        lineSeries = null;
-    }
-
-    // Clear container
-    container.innerHTML = '';
-
-    // Create new chart
-    chart = LightweightCharts.createChart(container, {
-        width: container.clientWidth,
-        height: 500,
-        layout: {
-            background: { color: '#ffffff' },
-            textColor: '#333',
-        },
-        grid: {
-            vertLines: { color: '#e1e4e8' },
-            horzLines: { color: '#e1e4e8' },
-        },
-        crosshair: {
-            mode: LightweightCharts.CrosshairMode.Normal,
-        },
-        rightPriceScale: {
-            borderColor: '#cccccc',
-        },
-        timeScale: {
-            borderColor: '#cccccc',
-            timeVisible: true,
-            secondsVisible: false,
-        },
-    });
-
-    // Add line series
-    lineSeries = chart.addLineSeries({
-        color: '#667eea',
-        lineWidth: 2,
-        crosshairMarkerVisible: true,
-        crosshairMarkerRadius: 6,
-        crosshairMarkerBorderColor: '#667eea',
-        crosshairMarkerBackgroundColor: '#ffffff',
-        lastValueVisible: true,
-        priceLineVisible: true,
-    });
-
-    // Convert candlestick data to line data format
-    const lineData = candleData.map(candle => ({
-        time: candle.time,
-        value: candle.close
-    }));
-
-    lineSeries.setData(lineData);
-
-    // Fit content
-    chart.timeScale().fitContent();
-
-    // Handle window resize
-    window.addEventListener('resize', () => {
-        if (chart) {
-            chart.applyOptions({ width: container.clientWidth });
-        }
-    });
-}
-
-// Aggregate tick data into candlesticks
-function aggregateToCandlesticks(tickData, intervalMinutes) {
-    if (!tickData || tickData.length === 0) return [];
-
-    const intervalSeconds = intervalMinutes * 60;
-    const candles = {};
-
-    tickData.forEach(tick => {
-        // Round down to interval boundary
-        const candleTime = Math.floor(tick.time / intervalSeconds) * intervalSeconds;
-
-        if (!candles[candleTime]) {
-            candles[candleTime] = {
-                time: candleTime,
-                open: tick.close,
-                high: tick.close,
-                low: tick.close,
-                close: tick.close
-            };
-        } else {
-            // Update high and low
-            candles[candleTime].high = Math.max(candles[candleTime].high, tick.close);
-            candles[candleTime].low = Math.min(candles[candleTime].low, tick.close);
-            // Update close (latest price in this interval)
-            candles[candleTime].close = tick.close;
-        }
-    });
-
-    // Convert to array and sort by time
-    return Object.values(candles).sort((a, b) => a.time - b.time);
-}
-
-// Update chart with new price data
-function updateChartData() {
-    if (selectedChartAsset && lineSeries && priceHistory[selectedChartAsset]) {
-        const candleData = aggregateToCandlesticks(priceHistory[selectedChartAsset], chartTimeframe);
-        if (candleData.length > 0) {
-            // Convert candlestick data to line data format
-            const lineData = candleData.map(candle => ({
-                time: candle.time,
-                value: candle.close
-            }));
-            lineSeries.setData(lineData);
-            chart.timeScale().fitContent();
-        }
     }
 }

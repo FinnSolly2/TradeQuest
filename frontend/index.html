@@ -8,9 +8,6 @@
 
     <!-- Amazon Cognito Identity SDK -->
     <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.6/dist/amazon-cognito-identity.min.js"></script>
-
-    <!-- TradingView Lightweight Charts -->
-    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
     <!-- Authentication Container -->
@@ -112,27 +109,6 @@
                     <span class="label">P/L:</span>
                     <span id="profit-loss" class="value">$0.00</span>
                 </div>
-            </div>
-        </section>
-
-        <!-- Price Charts Section -->
-        <section class="charts-section">
-            <div class="charts-header">
-                <h2>Price Charts</h2>
-                <div class="chart-controls">
-                    <select id="chart-asset-selector" class="chart-selector">
-                        <option value="">Select an asset...</option>
-                    </select>
-                    <select id="chart-timeframe-selector" class="chart-selector">
-                        <option value="1">1 Min</option>
-                        <option value="5">5 Min</option>
-                        <option value="15" selected>15 Min</option>
-                        <option value="60">1 Hour</option>
-                    </select>
-                </div>
-            </div>
-            <div id="chart-container" class="chart-container">
-                <p style="text-align: center; color: #666; padding: 40px;">Select an asset to view its price chart</p>
             </div>
         </section>
 
