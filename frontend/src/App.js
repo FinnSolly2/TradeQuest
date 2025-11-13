@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Menu, LogOut, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { API_BASE_URL } from './config';
 import AuthContainer from './components/Auth/AuthContainer';
@@ -17,30 +17,7 @@ function App() {
     const [leaderboard, setLeaderboard] = useState([]);
     const [tradeModal, setTradeModal] = useState({ isOpen: false, asset: null });
 
-    // Auto-refresh intervals
-    useEffect(() => {
-        if (user) {
-            loadUserData();
-            const portfolioInterval = setInterval(loadUserData, 1000);
-            return () => clearInterval(portfolioInterval);
-        }
-    }, [user]);
-
-    useEffect(() => {
-        refreshPrices();
-        refreshNews();
-        refreshLeaderboard();
-
-        const pricesInterval = setInterval(refreshPrices, 1000);
-        const newsInterval = setInterval(refreshNews, 10000);
-
-        return () => {
-            clearInterval(pricesInterval);
-            clearInterval(newsInterval);
-        };
-    }, []);
-
-    const loadUserData = async () => {
+    const loadUserData = useCallback(async () => {
         if (!user) return;
 
         try {
@@ -57,7 +34,31 @@ function App() {
         } catch (error) {
             console.error('Error loading portfolio:', error);
         }
-    };
+    }, [user]);
+
+    // Auto-refresh intervals
+    useEffect(() => {
+        if (user) {
+            loadUserData();
+            const portfolioInterval = setInterval(loadUserData, 1000);
+            return () => clearInterval(portfolioInterval);
+        }
+    }, [user, loadUserData]);
+
+    useEffect(() => {
+        refreshPrices();
+        refreshNews();
+        refreshLeaderboard();
+
+        const pricesInterval = setInterval(refreshPrices, 1000);
+        const newsInterval = setInterval(refreshNews, 10000);
+
+        return () => {
+            clearInterval(pricesInterval);
+            clearInterval(newsInterval);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const refreshPrices = async () => {
         try {
