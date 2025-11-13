@@ -50,7 +50,12 @@ config
 
 # Node modules (if you add any JS tooling)
 node_modules/
+package-lock.json
+
+# React build
+frontend/build/
 
 # Backup files
 *.bak
 *.backup
+frontend_old_backup/

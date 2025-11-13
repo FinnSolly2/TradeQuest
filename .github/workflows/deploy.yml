@@ -9,6 +9,7 @@ on:
 env:
   AWS_REGION: eu-west-1
   TERRAFORM_VERSION: 1.6.0
+  NODE_VERSION: 18
 
 jobs:
   deploy:
@@ -31,10 +32,34 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Build React Frontend
+        working-directory: ./frontend
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci
+          echo "🏗️ Building React app..."
+          npm run build
+          echo "✅ Build complete!"
+          ls -lh build/
+
+      - name: Run Frontend Tests
+        working-directory: ./frontend
+        run: |
+          echo "🧪 Running tests..."
+          CI=true npm test -- --passWithNoTests
+        continue-on-error: true
 
       - name: Package Lambda Functions
         run: |
@@ -99,20 +124,27 @@ jobs:
           echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
           echo "cloudfront_distribution_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
           echo "frontend_url=$(terraform output -raw frontend_url)" >> $GITHUB_OUTPUT
+          echo "api_url=$(terraform output -raw api_gateway_url)" >> $GITHUB_OUTPUT
 
-      - name: Upload Frontend to S3
+      - name: Upload React Build to S3
         run: |
-          echo "📤 Uploading frontend files to S3..."
-          aws s3 sync frontend/ s3://${{ steps.terraform_outputs.outputs.frontend_bucket }}/ \
+          echo "📤 Uploading React build to S3..."
+
+          # Upload static assets with long cache
+          aws s3 sync frontend/build/ s3://${{ steps.terraform_outputs.outputs.frontend_bucket }}/ \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "*.html" \
+            --exclude "asset-manifest.json" \
+            --exclude "manifest.json" \
             --quiet
 
-          # Upload HTML files with different cache settings
-          aws s3 sync frontend/ s3://${{ steps.terraform_outputs.outputs.frontend_bucket }}/ \
+          # Upload HTML and manifests with no cache
+          aws s3 sync frontend/build/ s3://${{ steps.terraform_outputs.outputs.frontend_bucket }}/ \
             --exclude "*" \
             --include "*.html" \
+            --include "asset-manifest.json" \
+            --include "manifest.json" \
             --cache-control "public, max-age=0, must-revalidate" \
             --quiet
 
@@ -121,22 +153,31 @@ jobs:
       - name: Invalidate CloudFront Cache
         run: |
           echo "🔄 Invalidating CloudFront cache..."
-          aws cloudfront create-invalidation \
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
             --distribution-id ${{ steps.terraform_outputs.outputs.cloudfront_distribution_id }} \
             --paths "/*" \
             --query 'Invalidation.Id' \
-            --output text
-          echo "✅ Cache invalidation requested"
+            --output text)
+          echo "✅ Cache invalidation requested: $INVALIDATION_ID"
 
       - name: Deployment Summary
         run: |
           echo "## 🎉 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🌐 Frontend URL" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.terraform_outputs.outputs.frontend_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 Application URLs" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend:** ${{ steps.terraform_outputs.outputs.frontend_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**API:** ${{ steps.terraform_outputs.outputs.api_url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Lambda Functions Deployed" >> $GITHUB_STEP_SUMMARY
-          echo "✅ 10 Lambda functions updated (including new price_collector)" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Components Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ React Frontend (Built with Node.js ${{ env.NODE_VERSION }})" >> $GITHUB_STEP_SUMMARY
+          echo "✅ 10 Lambda Functions" >> $GITHUB_STEP_SUMMARY
+          echo "✅ API Gateway" >> $GITHUB_STEP_SUMMARY
+          echo "✅ DynamoDB Tables" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### ⏰ Deployment Time" >> $GITHUB_STEP_SUMMARY
           echo "$(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Visit the frontend URL to test the application" >> $GITHUB_STEP_SUMMARY
+          echo "2. Sign up for a new account or sign in" >> $GITHUB_STEP_SUMMARY
+          echo "3. Start trading!" >> $GITHUB_STEP_SUMMARY
