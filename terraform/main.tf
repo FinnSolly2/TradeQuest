@@ -574,11 +574,12 @@ resource "aws_lambda_permission" "allow_eventbridge_price_collection" {
   source_arn    = aws_cloudwatch_event_rule.price_collection.arn
 }
 
-# 10-minute rule for price simulation
+# 10-minute rule for price simulation (PAUSED to conserve AWS Free Tier credits)
 resource "aws_cloudwatch_event_rule" "hourly_simulation" {
   name                = "${var.project_name}-simulation-${var.environment}"
   description         = "Trigger simulation pipeline every 10 minutes"
   schedule_expression = var.simulation_schedule
+  is_enabled          = false  # PAUSED - Set to true to re-enable
 }
 
 resource "aws_cloudwatch_event_target" "hourly_simulation_target" {
